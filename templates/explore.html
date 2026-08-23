@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Explore{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold">Explore</h1>
+
+<form method="get" class="mt-6 flex gap-2">
+  <input type="text" name="q" value="{{ query }}" placeholder="Search TV shows…"
+         class="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm outline-none focus:border-zinc-600">
+  <button type="submit"
+          class="bg-zinc-100 text-zinc-900 rounded px-4 py-2 text-sm font-medium">Search</button>
+</form>
+
+{% if query and not results %}
+  <p class="text-zinc-500 mt-8">No results for “{{ query }}”.</p>
+{% endif %}
+
+<div class="mt-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+  {% for show in results %}
+    <a href="{% url 'show_detail' show.id %}" class="block group">
+      {% if show.poster_path %}
+        <img src="{{ image_base }}{{ show.poster_path }}" alt=""
+             class="w-full rounded border border-zinc-800 group-hover:border-zinc-600">
+      {% else %}
+        <div class="w-full aspect-[2/3] rounded border border-zinc-800 bg-zinc-900
+                    flex items-center justify-center text-zinc-600 text-xs">No poster</div>
+      {% endif %}
+      <p class="mt-2 text-sm group-hover:text-white">{{ show.name }}</p>
+      <p class="text-xs text-zinc-500">{{ show.first_air_date|slice:":4"|default:"—" }}</p>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}
