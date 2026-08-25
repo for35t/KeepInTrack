@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from .models import Follow, Season, Show
+from .models import Episode, Follow, Season, Show
 
+admin.site.register(Episode)
 
 class SeasonInline(admin.TabularInline):
     model = Season

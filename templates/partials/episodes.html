@@ -1,0 +1,23 @@
+{% for episode in episodes %}
+  <details class="border-t border-zinc-800">
+    <summary class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-900">
+      <span class="text-zinc-500 w-8 shrink-0">E{{ episode.episode_number }}</span>
+      <span class="flex-1">{{ episode.name|default:"TBA" }}</span>
+      {% if episode.runtime %}
+        <span class="text-xs text-zinc-500">{{ episode.runtime }}m</span>
+      {% endif %}
+      <span class="text-xs text-zinc-500 w-24 text-right">{{ episode.air_date|date:"M j, Y"|default:"TBA" }}</span>
+    </summary>
+    <div class="px-3 pb-3 pl-14 flex gap-4">
+     {% if episode.still_path %}
+      <img src="{{ still_base }}{{ episode.still_path }}" alt=""
+           class="w-40 rounded border border-zinc-800 shrink-0 self-start">
+     {% endif %}
+     <p class="text-sm text-zinc-400 leading-relaxed">
+       {{ episode.overview|default:"No summary yet." }}
+     </p>
+    </div>
+  </details>
+{% empty %}
+  <p class="px-3 py-2 text-sm text-zinc-500">No episodes listed.</p>
+{% endfor %}

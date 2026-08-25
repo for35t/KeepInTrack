@@ -4,7 +4,7 @@ import requests
 from django.core.management.base import BaseCommand
 
 from tracker.models import Show
-from tracker.services import sync_show
+from tracker.services import sync_episodes, sync_show
 
 
 class Command(BaseCommand):
@@ -39,10 +39,12 @@ class Command(BaseCommand):
                 self.stderr.write(f"  {show.name}: {exc}")
                 continue
 
-            if updated.next_air_date != old_date:
-                self.stdout.write(self.style.SUCCESS(
-                    f"  {updated.name}: {old_date or 'TBA'} → {updated.next_air_date or 'TBA'}"
-                ))
+            for season in updated.seasons.all():
+                if season.episodes_synced_at and season.has_unaired_episodes:
+                    try:
+                        sync_episodes(season)
+                    except requests.RequestException:
+                        pass
             time.sleep(0.25)
 
         self.stdout.write(f"Done. {total - failed} synced, {failed} failed.")

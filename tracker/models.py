@@ -17,13 +17,15 @@ class Show(models.Model):
     networks = models.JSONField(default=list, blank=True)
     extra_genres = models.JSONField(default=list, blank=True)
     genres = models.JSONField(default=list, blank=True)
+    cast = models.JSONField(default=list, blank=True)
 
     next_air_date = models.DateField(null=True, blank=True)
     next_season_number = models.IntegerField(null=True, blank=True)
     next_episode_number = models.IntegerField(null=True, blank=True)
 
     synced_at = models.DateTimeField(auto_now=True)
-
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
+    
     class Meta:
         ordering = ["name"]
 
@@ -51,6 +53,7 @@ class Season(models.Model):
     poster_path = models.CharField(max_length=255, blank=True)
     air_date = models.DateField(null=True, blank=True)
     episode_count = models.IntegerField(default=0)
+    episodes_synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ("show", "season_number")
@@ -58,6 +61,14 @@ class Season(models.Model):
 
     def __str__(self):
         return f"{self.show.name} — {self.name}"
+
+    @property
+    def has_unaired_episodes(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        return self.episodes.filter(
+            models.Q(air_date__isnull=True) | models.Q(air_date__gte=today)
+        ).exists()
 
 
 class Follow(models.Model):
@@ -73,3 +84,19 @@ class Follow(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.show}"
+
+class Episode(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="episodes")
+    episode_number = models.IntegerField()
+    name = models.CharField(max_length=255, blank=True)
+    overview = models.TextField(blank=True)
+    air_date = models.DateField(null=True, blank=True)
+    runtime = models.IntegerField(null=True, blank=True)
+    still_path = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        unique_together = ("season", "episode_number")
+        ordering = ["episode_number"]
+
+    def __str__(self):
+        return f"S{self.season.season_number}E{self.episode_number} — {self.name}"

@@ -23,10 +23,15 @@
       {% if show.networks %} · {{ show.networks|join:" · " }}{% endif %}
     </p>
 
-    {% if show.genres %}
+    {% if genre_links %}
       <div class="flex flex-wrap gap-2 mt-3">
-        {% for genre in show.all_genres %}
-          <span class="text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">{{ genre }}</span>
+        {% for genre in genre_links %}
+          {% if genre.id %}
+            <a href="{% url 'explore' %}?genre={{ genre.id }}"
+               class="text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">{{ genre.name }}</a>
+          {% else %}
+            <span class="text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">{{ genre.name }}</span>
+          {% endif %}
         {% endfor %}
       </div>
     {% endif %}
@@ -66,14 +71,52 @@
   </div>
 </div>
 
+{% if show.cast %}
+<div x-data="{ open: true }" class="mt-10">
+  <button @click="open = !open"
+          class="flex items-center gap-2 text-lg font-semibold">
+    Cast
+    <span class="text-sm text-zinc-500 transition-transform duration-200"
+          :class="open ? 'rotate-90' : ''">›</span>
+  </button>
+
+  <div x-show="open" x-collapse>
+    <div class="grid grid-cols-3 sm:grid-cols-5 gap-4 mt-4">
+      {% for person in show.cast %}
+        <div class="text-center">
+          {% if person.profile_path %}
+            <img src="{{ profile_base }}{{ person.profile_path }}" alt=""
+                 class="w-full rounded border border-zinc-800">
+          {% else %}
+            <div class="w-full aspect-[2/3] rounded border border-zinc-800 bg-zinc-900
+                        flex items-center justify-center text-zinc-600 text-xs">?</div>
+          {% endif %}
+          <p class="text-xs mt-2 truncate">{{ person.name }}</p>
+          <p class="text-xs text-zinc-500 truncate">{{ person.character }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <h2 class="text-lg font-semibold mt-10 mb-3">Seasons</h2>
 <div class="space-y-2">
   {% for season in show.seasons.all %}
-    <div class="flex items-center gap-3 text-sm border border-zinc-800 rounded px-3 py-2">
-      <span class="flex-1">{{ season.name }}</span>
-      <span class="text-zinc-500">{{ season.episode_count }} ep</span>
-      <span class="text-zinc-500 w-20 text-right">{{ season.air_date|date:"Y"|default:"TBA" }}</span>
-    </div>
+    <details class="border border-zinc-800 rounded overflow-hidden"
+             hx-get="{% url 'season_episodes' show.tmdb_id season.season_number %}"
+             hx-trigger="toggle once"
+             hx-target="find .episode-list"
+             hx-swap="innerHTML">
+      <summary class="flex items-center gap-3 text-sm px-3 py-2 cursor-pointer hover:bg-zinc-900">
+        <span class="flex-1">{{ season.name }}</span>
+        <span class="text-zinc-500">{{ season.episode_count }} ep</span>
+        <span class="text-zinc-500 w-20 text-right">{{ season.air_date|date:"Y"|default:"TBA" }}</span>
+      </summary>
+      <div class="episode-list">
+        <p class="px-3 py-2 text-sm text-zinc-500">Loading…</p>
+      </div>
+    </details>
   {% endfor %}
 </div>
 

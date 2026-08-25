@@ -7,8 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Tracker{% endblock %}</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+    summary { list-style: none; }
+    summary::-webkit-details-marker { display: none; }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">

@@ -19,7 +19,7 @@
       {% endif %}
       <div class="flex-1">
         <p class="text-sm">{{ show.name }}</p>
-        <p class="text-xs text-zinc-500">{{ show.networks|join:" · " }}</p>
+        <p class="text-xs text-zinc-500">{{ show.all_genres|join:" · " }}</p>
       </div>
       {% if show.release_state == "scheduled" %}
         <span class="text-xs text-emerald-400">S{{ show.next_season_number }}E{{ show.next_episode_number }} · {{ show.next_air_date|date:"M j" }}</span>
