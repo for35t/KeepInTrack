@@ -4,9 +4,22 @@
 {% block content %}
 <h1 class="text-2xl font-semibold">My Shows</h1>
 
+{% if chips %}
+  <div class="flex flex-wrap gap-2 mt-4">
+    {% for chip in chips %}
+      <a href="{{ chip.url }}"
+         class="text-xs px-2 py-1 rounded border {% if chip.active %}bg-zinc-100 text-zinc-900 border-zinc-100{% else %}bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600{% endif %}">{{ chip.label }}</a>
+    {% endfor %}
+  </div>
+{% endif %}
+
 {% if not shows %}
   <p class="text-zinc-500 mt-4">
-    Nothing yet. <a href="{% url 'explore' %}" class="underline hover:text-zinc-300">Find something to follow.</a>
+    {% if chips %}
+      No followed shows match that combination.
+    {% else %}
+      Nothing yet. <a href="{% url 'explore' %}" class="underline hover:text-zinc-300">Find something to follow.</a>
+    {% endif %}
   </p>
 {% endif %}
 

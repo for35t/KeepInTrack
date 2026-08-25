@@ -4,7 +4,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
-
+from urllib.parse import urlencode
 from . import services, tmdb
 from .models import Follow, Show
 
@@ -45,19 +45,17 @@ def home(request):
 
 def explore(request):
     query = request.GET.get("q", "").strip()
-    genre_id = request.GET.get("genre", "").strip()
+    selected = request.GET.getlist("genre")
     genre_map = services.get_genre_map()
     results = []
     error = None
-    genre_name = ""
 
     try:
-        if genre_id:
-            genre_name = genre_map.get(int(genre_id), "")
-            results = tmdb.discover_tv(genre_id).get("results") or []
+        if selected:
+            results = tmdb.discover_tv(",".join(selected)).get("results") or []
         elif query:
             results = tmdb.search_tv(query)
-    except (requests.RequestException, ValueError):
+    except requests.RequestException:
         error = "Search is unavailable right now. Try again in a moment."
 
     for show in results:
@@ -65,15 +63,39 @@ def explore(request):
             genre_map[gid] for gid in show.get("genre_ids") or [] if gid in genre_map
         ]
 
-    return render(request, "explore.html", {
+    options = sorted(genre_map.items(), key=lambda pair: pair[1])
+    chips = _genre_chips(options, selected, [("q", query)] if query else None)
+    selected_names = [
+        genre_map[int(g)] for g in selected if g.isdigit() and int(g) in genre_map
+    ]
+
+    context = {
         "query": query,
-        "genre_id": genre_id,
-        "genre_name": genre_name,
-        "genres": sorted(genre_map.items(), key=lambda pair: pair[1]),
+        "chips": chips,
+        "selected_names": selected_names,
         "results": results,
         "error": error,
         "image_base": tmdb.IMAGE_BASE,
-    })
+    }
+    if request.headers.get("HX-Request"):
+        return render(request, "partials/explore_results.html", context)
+    return render(request, "explore.html", context)
+
+def _genre_chips(options, selected, extra_params=None):
+    chips = []
+    for value, label in options:
+        value = str(value)
+        active = value in selected
+        remaining = [v for v in selected if v != value] if active else selected + [value]
+        params = [("genre", v) for v in remaining]
+        if extra_params:
+            params.extend(extra_params)
+        chips.append({
+            "label": label,
+            "active": active,
+            "url": f"?{urlencode(params)}" if params else "?",
+        })
+    return chips
 
 def show_detail(request, tmdb_id):
     try:
@@ -111,11 +133,20 @@ def toggle_follow(request, tmdb_id):
 
 @login_required
 def my_shows(request):
-    shows = Show.objects.filter(followers__user=request.user).order_by(
-        F("next_air_date").asc(nulls_last=True), "name"
+    selected = request.GET.getlist("genre")
+    shows = list(
+        Show.objects.filter(followers__user=request.user).order_by(
+            F("next_air_date").asc(nulls_last=True), "name"
+        )
     )
+
+    available = sorted({genre for show in shows for genre in show.all_genres})
+    if selected:
+        shows = [s for s in shows if set(selected) <= set(s.all_genres)]
+
     return render(request, "my_shows.html", {
         "shows": shows,
+        "chips": _genre_chips([(g, g) for g in available], selected),
         "image_base": tmdb.IMAGE_BASE,
     })
 
