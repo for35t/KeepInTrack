@@ -19,7 +19,7 @@
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
 
     <nav class="border-b border-zinc-800">
-    <div class="max-w-4xl mx-auto px-4 flex gap-6 items-center h-14 text-sm">
+      <div class="px-6 flex gap-6 items-center h-14 text-sm">
       <span class="font-semibold mr-2">Tracker</span>
 
       <a href="{% url 'home' %}"
@@ -45,13 +45,13 @@
     </div>
   </nav>
 
-  <main class="max-w-4xl mx-auto px-4 py-10">
+  <main class="max-w-6xl mx-auto px-4 py-10">
     {% block content %}{% endblock %}
   </main>
 
 
     <footer class="border-t border-zinc-800 mt-16">
-    <div class="max-w-4xl mx-auto px-4 py-6 flex items-center gap-3 text-xs text-zinc-500">
+    <div class="max-w-6xl mx-auto px-4 py-6 flex items-center gap-3 text-xs text-zinc-500">
       <img src="{% static 'tracker/tmdb-logo.svg' %}" alt="TMDB" class="h-4">
       <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
     </div>

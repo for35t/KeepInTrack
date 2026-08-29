@@ -19,12 +19,12 @@ def _get(path, **params):
     return response.json()
 
 
-def search_tv(query):
-    return _get("/search/tv", query=query)["results"]
+def search_tv(query, page=1):
+    return _get("/search/tv", query=query, page=page)
 
 
-def get_tv(tmdb_id):
-    return _get(f"/tv/{tmdb_id}", append_to_response="aggregate_credits")
+def discover_tv(genre_ids, page=1):
+    return _get("/discover/tv", with_genres=genre_ids, sort_by="popularity.desc", page=page)
 
 STILL_BASE = "https://image.tmdb.org/t/p/w300"
 

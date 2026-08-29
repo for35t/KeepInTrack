@@ -1,4 +1,4 @@
-<div class="flex flex-wrap gap-2 mt-6">
+<div class="flex flex-wrap gap-2 mt-6 max-w-4xl">
   {% for chip in chips %}
     <a href="{{ chip.url }}"
        class="text-xs px-2 py-1 rounded border {% if chip.active %}bg-zinc-100 text-zinc-900 border-zinc-100{% else %}bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600{% endif %}">{{ chip.label }}</a>
@@ -15,8 +15,7 @@
   <p class="text-zinc-500 mt-6">No results for “{{ query }}”.</p>
 {% endif %}
 
-<div class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-  {% for show in results %}
+<div class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">  {% for show in results %}
     <a href="{% url 'show_detail' show.id %}" class="block group">
       {% if show.poster_path %}
         <img src="{{ image_base }}{{ show.poster_path }}" alt=""
@@ -37,3 +36,21 @@
     </a>
   {% endfor %}
 </div>
+
+{% if results and page > 1 or has_next %}
+  <div class="flex items-center justify-center gap-4 mt-8 text-sm">
+    {% if prev_url %}
+      <a href="{{ prev_url }}" class="px-3 py-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">← Previous</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded border border-zinc-900 text-zinc-700">← Previous</span>
+    {% endif %}
+
+    <span class="text-zinc-500">Page {{ page }}</span>
+
+    {% if next_url %}
+      <a href="{{ next_url }}" class="px-3 py-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">Next →</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded border border-zinc-900 text-zinc-700">Next →</span>
+    {% endif %}
+  </div>
+{% endif %}

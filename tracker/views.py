@@ -15,6 +15,38 @@ from .models import Follow, Season, Show
 import requests
 from django.http import Http404
 
+PER_PAGE = 30
+TMDB_PAGE_SIZE = 20
+TMDB_MAX_RESULTS = 10000
+
+
+def _paged(fetch, page):
+    start = (page - 1) * PER_PAGE
+    first_page = start // TMDB_PAGE_SIZE + 1
+    offset = start % TMDB_PAGE_SIZE
+
+    items = []
+    total = 0
+    for tmdb_page in (first_page, first_page + 1):
+        if tmdb_page > 500:
+            break
+        data = fetch(tmdb_page)
+        total = data.get("total_results") or 0
+        results = data.get("results") or []
+        items.extend(results)
+        if len(results) < TMDB_PAGE_SIZE:
+            break
+
+    window = items[offset:offset + PER_PAGE]
+    has_next = (start + PER_PAGE) < min(total, TMDB_MAX_RESULTS)
+    return window, has_next
+
+
+def _page_url(request, page):
+    params = request.GET.copy()
+    params["page"] = page
+    return f"?{params.urlencode()}"
+
 def signup(request):
     if request.user.is_authenticated:
         return redirect("home")
@@ -46,15 +78,25 @@ def home(request):
 def explore(request):
     query = request.GET.get("q", "").strip()
     selected = request.GET.getlist("genre")
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except ValueError:
+        page = 1
+
     genre_map = services.get_genre_map()
     results = []
+    has_next = False
     error = None
 
     try:
         if selected:
-            results = tmdb.discover_tv(",".join(selected)).get("results") or []
+            results, has_next = _paged(
+                lambda p: tmdb.discover_tv(",".join(selected), page=p), page
+            )
         elif query:
-            results = tmdb.search_tv(query)
+            results, has_next = _paged(
+                lambda p: tmdb.search_tv(query, page=p), page
+            )
     except requests.RequestException:
         error = "Search is unavailable right now. Try again in a moment."
 
@@ -75,6 +117,10 @@ def explore(request):
         "selected_names": selected_names,
         "results": results,
         "error": error,
+        "page": page,
+        "has_next": has_next,
+        "prev_url": _page_url(request, page - 1) if page > 1 else None,
+        "next_url": _page_url(request, page + 1) if has_next else None,
         "image_base": tmdb.IMAGE_BASE,
     }
     if request.headers.get("HX-Request"):

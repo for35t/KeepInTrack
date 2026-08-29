@@ -4,7 +4,7 @@
 {% block content %}
 <h1 class="text-2xl font-semibold">Explore</h1>
 
-<form method="get" class="mt-6 flex gap-2 items-center">
+<form method="get" class="mt-6 flex gap-2 items-center max-w-4xl">
   <input type="text" name="q" value="{{ query }}" placeholder="Search TV shows…"
          hx-get="{% url 'explore' %}"
          hx-trigger="input changed delay:300ms"
