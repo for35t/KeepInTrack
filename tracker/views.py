@@ -6,7 +6,7 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from urllib.parse import urlencode
 from . import services, tmdb
-from .models import Follow, Show
+from .models import Follow, Show, Notification
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -19,6 +19,34 @@ PER_PAGE = 30
 TMDB_PAGE_SIZE = 20
 TMDB_MAX_RESULTS = 10000
 
+@login_required
+def notifications(request):
+    items = Notification.objects.filter(user=request.user).select_related("show")
+    return render(request, "notifications.html", {"items": items})
+
+
+@login_required
+@require_POST
+def read_notification(request, pk):
+    note = get_object_or_404(Notification, pk=pk, user=request.user)
+    if note.read_at is None:
+        note.read_at = timezone.now()
+        note.save(update_fields=["read_at"])
+    return redirect("show_detail", tmdb_id=note.show.tmdb_id)
+
+
+@login_required
+@require_POST
+def delete_notification(request, pk):
+    get_object_or_404(Notification, pk=pk, user=request.user).delete()
+    return redirect("notifications")
+
+
+@login_required
+@require_POST
+def clear_read_notifications(request):
+    Notification.objects.filter(user=request.user, read_at__isnull=False).delete()
+    return redirect("notifications")
 
 def _paged(fetch, page):
     start = (page - 1) * PER_PAGE

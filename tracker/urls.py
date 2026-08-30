@@ -11,4 +11,8 @@ urlpatterns = [
     path("show/<int:tmdb_id>/follow/", views.toggle_follow, name="toggle_follow"),
     path("signup/", views.signup, name="signup"),
     path("show/<int:tmdb_id>/season/<int:season_number>/", views.season_episodes, name="season_episodes"),
+    path("notifications/", views.notifications, name="notifications"),
+    path("notifications/<int:pk>/read/", views.read_notification, name="read_notification"),
+    path("notifications/<int:pk>/delete/", views.delete_notification, name="delete_notification"),
+    path("notifications/clear-read/", views.clear_read_notifications, name="clear_read_notifications"),
 ]

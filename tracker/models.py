@@ -100,3 +100,32 @@ class Episode(models.Model):
 
     def __str__(self):
         return f"S{self.season.season_number}E{self.episode_number} — {self.name}"
+
+
+class Notification(models.Model):
+    DATE_ANNOUNCED = "date_announced"
+    DATE_CHANGED = "date_changed"
+    SEASON_ADDED = "season_added"
+    STATUS_CHANGED = "status_changed"
+
+    KIND_CHOICES = [
+        (DATE_ANNOUNCED, "Air date announced"),
+        (DATE_CHANGED, "Air date changed"),
+        (SEASON_ADDED, "New season"),
+        (STATUS_CHANGED, "Status changed"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    show = models.ForeignKey(Show, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    message = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} — {self.message}"

@@ -4,8 +4,7 @@ import requests
 from django.core.management.base import BaseCommand
 
 from tracker.models import Show
-from tracker.services import sync_episodes, sync_show
-
+from tracker.services import detect_changes, purge_old_notifications, sync_episodes, sync_show
 
 class Command(BaseCommand):
     help = "Re-sync followed shows from TMDB."
@@ -31,6 +30,11 @@ class Command(BaseCommand):
         failed = 0
 
         for show in shows:
+            before = {
+                "next_air_date": show.next_air_date,
+                "number_of_seasons": show.number_of_seasons,
+                "status": show.status,
+            }
             old_date = show.next_air_date
             try:
                 updated = sync_show(show.tmdb_id)
@@ -38,6 +42,7 @@ class Command(BaseCommand):
                 failed += 1
                 self.stderr.write(f"  {show.name}: {exc}")
                 continue
+            detect_changes(before, updated)
 
             for season in updated.seasons.all():
                 if season.episodes_synced_at and season.has_unaired_episodes:
@@ -46,5 +51,7 @@ class Command(BaseCommand):
                     except requests.RequestException:
                         pass
             time.sleep(0.25)
-
+        purged = purge_old_notifications()
+        if purged:
+            self.stdout.write(f"Purged {purged} read notification(s).")
         self.stdout.write(f"Done. {total - failed} synced, {failed} failed.")

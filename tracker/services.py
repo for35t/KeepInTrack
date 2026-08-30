@@ -6,6 +6,7 @@ from django.core.cache import cache
 from . import tmdb
 from .models import Season, Show
 from .models import Episode, Season, Show
+from .models import Episode, Follow, Notification, Season, Show
 
 EPISODE_STALE_AFTER = timedelta(hours=12)
 CAST_LIMIT = 15
@@ -129,3 +130,49 @@ def get_or_sync_episodes(season):
         except requests.RequestException:
             pass
     return season.episodes.all()
+
+
+READ_RETENTION = timedelta(days=1)
+
+
+def _notify_followers(show, kind, message):
+    user_ids = Follow.objects.filter(show=show).values_list("user_id", flat=True)
+    Notification.objects.bulk_create([
+        Notification(user_id=uid, show=show, kind=kind, message=message)
+        for uid in user_ids
+    ])
+
+
+def detect_changes(before, show):
+    if before is None:
+        return
+
+    if show.next_air_date and not before["next_air_date"]:
+        _notify_followers(
+            show, Notification.DATE_ANNOUNCED,
+            f"{show.name} — S{show.next_season_number}E{show.next_episode_number} "
+            f"airs {show.next_air_date:%b %d, %Y}",
+        )
+    elif show.next_air_date and show.next_air_date != before["next_air_date"]:
+        _notify_followers(
+            show, Notification.DATE_CHANGED,
+            f"{show.name} — next episode moved to {show.next_air_date:%b %d, %Y}",
+        )
+
+    if show.number_of_seasons > before["number_of_seasons"]:
+        _notify_followers(
+            show, Notification.SEASON_ADDED,
+            f"{show.name} — season {show.number_of_seasons} added",
+        )
+
+    if show.status != before["status"]:
+        _notify_followers(
+            show, Notification.STATUS_CHANGED,
+            f"{show.name} — status is now {show.status}",
+        )
+
+
+def purge_old_notifications():
+    cutoff = timezone.now() - READ_RETENTION
+    deleted, _ = Notification.objects.filter(read_at__lt=cutoff).delete()
+    return deleted

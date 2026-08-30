@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold">Alerts</h1>
+  <form method="post" action="{% url 'clear_read_notifications' %}">
+    {% csrf_token %}
+    <button type="submit" class="text-xs text-zinc-500 hover:text-zinc-300">Delete all read</button>
+  </form>
+</div>
+
+{% if not items %}
+  <p class="text-zinc-500 mt-6">Nothing new.</p>
+{% endif %}
+
+<div class="mt-6 space-y-2">
+  {% for item in items %}
+    <div class="flex items-center gap-3 border rounded px-3 py-2
+                {% if item.read_at %}border-zinc-900 text-zinc-600{% else %}border-zinc-800 text-zinc-100{% endif %}">
+
+      <form method="post" action="{% url 'read_notification' item.pk %}" class="flex-1">
+        {% csrf_token %}
+        <button type="submit" class="text-left text-sm w-full">
+          {{ item.message }}
+          <span class="block text-xs text-zinc-500 mt-0.5">{{ item.created_at|timesince }} ago</span>
+        </button>
+      </form>
+
+      <div x-data="{ open: false }" class="relative">
+        <button type="button" @click="open = !open"
+                class="text-zinc-500 hover:text-zinc-300 px-2">⋯</button>
+        <div x-show="open" @click.outside="open = false" x-cloak
+             class="absolute right-0 mt-1 bg-zinc-900 border border-zinc-800 rounded text-xs z-10">
+          <form method="post" action="{% url 'delete_notification' item.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="block px-3 py-2 hover:bg-zinc-800 whitespace-nowrap">Delete</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
