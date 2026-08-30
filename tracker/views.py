@@ -183,6 +183,10 @@ def show_detail(request, tmdb_id):
     )
     name_to_id = services.get_genre_name_to_id()
     genre_links = [{"name": g, "id": name_to_id.get(g)} for g in show.all_genres]
+    region = request.session.get("region", "")
+    providers, watch_link = ([], "")
+    if region:
+        providers, watch_link = services.get_providers(tmdb_id, region)
     return render(request, "show_detail.html", {
         "show": show,
         "is_following": is_following,
@@ -190,6 +194,13 @@ def show_detail(request, tmdb_id):
         "backdrop_base": tmdb.BACKDROP_BASE,
         "profile_base": tmdb.PROFILE_BASE,
         "genre_links": genre_links,
+        "region": region,
+        "region_name": dict(services.get_watch_regions()).get(region, region),
+        "regions": services.get_watch_regions(),
+        "suggested_region": services.suggest_region(request),
+        "providers": providers,
+        "watch_link": watch_link,
+        "logo_base": tmdb.LOGO_BASE,
     })
 
 
@@ -227,7 +238,13 @@ def my_shows(request):
 
 @login_required
 def profile(request):
-    return render(request, "profile.html")
+    region = request.session.get("region", "")
+    return render(request, "profile.html", {
+        "region": region,
+        "region_name": dict(services.get_watch_regions()).get(region, ""),
+        "regions": services.get_watch_regions(),
+        "suggested_region": services.suggest_region(request),
+    })
 
 def season_episodes(request, tmdb_id, season_number):
     show = get_object_or_404(Show, tmdb_id=tmdb_id)
@@ -240,3 +257,15 @@ def season_episodes(request, tmdb_id, season_number):
         "episodes": episodes,
         "still_base": tmdb.STILL_BASE,
     })
+
+@require_POST
+def set_region(request):
+    region = request.POST.get("region", "").strip().upper()
+    valid = {code for code, _ in services.get_watch_regions()}
+    if region in valid:
+        request.session["region"] = region
+
+    tmdb_id = request.POST.get("tmdb_id")
+    if tmdb_id and tmdb_id.isdigit():
+        return redirect("show_detail", tmdb_id=int(tmdb_id))
+    return redirect("profile")

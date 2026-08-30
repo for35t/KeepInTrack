@@ -11,4 +11,26 @@
   </p>
   <a href="{% url 'my_shows' %}" class="text-sm underline text-zinc-500 hover:text-zinc-300">View list</a>
 </div>
+
+<div class="mt-6 border border-zinc-800 rounded p-4">
+  <p class="text-sm text-zinc-400">Streaming region</p>
+  <p class="text-xs text-zinc-500 mt-1">
+    {% if region %}Currently {{ region_name }}.{% else %}Not set.{% endif %}
+    Used to show where your shows are available.
+  </p>
+
+  <form method="post" action="{% url 'set_region' %}" class="mt-3 flex items-center gap-2">
+    {% csrf_token %}
+    <select name="region"
+            class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm outline-none focus:border-zinc-600">
+      {% for code, name in regions %}
+        <option value="{{ code }}"
+          {% if region %}{% if code == region %}selected{% endif %}
+          {% else %}{% if code == suggested_region %}selected{% endif %}{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="bg-zinc-100 text-zinc-900 rounded px-3 py-1.5 text-sm font-medium">Save</button>
+  </form>
+</div>
+
 {% endblock %}

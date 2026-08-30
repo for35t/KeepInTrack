@@ -13,7 +13,56 @@ CAST_LIMIT = 15
 STALE_AFTER = timedelta(hours=12)
 GENRE_CACHE_KEY = "tmdb_tv_genres"
 GENRE_CACHE_SECONDS = 60 * 60 * 24 * 7
+REGION_CACHE_KEY = "tmdb_watch_regions"
+PROVIDER_CACHE_SECONDS = 60 * 60 * 24
+STREAMING_KEYS = ("flatrate", "free", "ads")
 
+
+def get_watch_regions():
+    regions = cache.get(REGION_CACHE_KEY)
+    if regions is None:
+        try:
+            data = tmdb.get_watch_regions()
+        except requests.RequestException:
+            return []
+        regions = sorted(
+            ((r["iso_3166_1"], r["english_name"]) for r in data.get("results") or []),
+            key=lambda pair: pair[1],
+        )
+        cache.set(REGION_CACHE_KEY, regions, GENRE_CACHE_SECONDS)
+    return regions
+
+
+def get_providers(tmdb_id, region):
+    key = f"providers:{tmdb_id}:{region}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        data = tmdb.get_watch_providers(tmdb_id)
+    except requests.RequestException:
+        return [], ""
+
+    region_data = (data.get("results") or {}).get(region) or {}
+    seen = {}
+    for bucket in STREAMING_KEYS:
+        for provider in region_data.get(bucket) or []:
+            seen.setdefault(provider["provider_id"], provider)
+
+    providers = sorted(seen.values(), key=lambda p: p.get("display_priority", 999))
+    result = (providers, region_data.get("link", ""))
+    cache.set(key, result, PROVIDER_CACHE_SECONDS)
+    return result
+
+
+def suggest_region(request):
+    header = request.headers.get("Accept-Language", "")
+    for part in header.split(","):
+        tag = part.split(";")[0].strip()
+        if "-" in tag:
+            return tag.rsplit("-", 1)[-1].upper()
+    return ""
 
 def get_genre_map():
     genres = cache.get(GENRE_CACHE_KEY)

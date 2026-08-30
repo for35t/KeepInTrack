@@ -6,7 +6,15 @@ BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE = "https://image.tmdb.org/t/p/w342"
 BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280"
 PROFILE_BASE = "https://image.tmdb.org/t/p/w185"
+LOGO_BASE = "https://image.tmdb.org/t/p/w92"
 
+
+def get_watch_providers(tmdb_id):
+    return _get(f"/tv/{tmdb_id}/watch/providers")
+
+
+def get_watch_regions():
+    return _get("/watch/providers/regions")
 
 def get_tv(tmdb_id):
     return _get(f"/tv/{tmdb_id}", append_to_response="aggregate_credits")
