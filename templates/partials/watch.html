@@ -1,0 +1,58 @@
+{% if not region %}
+  <form method="post" action="{% url 'set_region' %}"
+        hx-post="{% url 'set_region' %}"
+        hx-target="#watch-section"
+        hx-swap="innerHTML"
+        class="border border-zinc-800 rounded p-4 flex flex-wrap items-center gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="tmdb_id" value="{{ tmdb_id }}">
+    <span class="text-sm text-zinc-400">Where are you watching from?</span>
+    <select name="region"
+            class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm outline-none focus:border-zinc-600">
+      {% for code, name in regions %}
+        <option value="{{ code }}" {% if code == suggested_region %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="bg-zinc-100 text-zinc-900 rounded px-3 py-1.5 text-sm font-medium">
+      Show options</button>
+  </form>
+
+{% else %}
+  {% if providers %}
+    <div class="flex flex-wrap gap-3">
+      {% for provider in providers %}
+        <div class="flex items-center gap-2 border border-zinc-800 rounded px-3 py-2">
+          <img src="{{ logo_base }}{{ provider.logo_path }}" alt="" class="w-6 h-6 rounded">
+          <span class="text-sm">{{ provider.provider_name }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-zinc-500">No streaming options listed for {{ region_name }}.</p>
+  {% endif %}
+
+  <div class="flex flex-wrap items-center gap-3 mt-3 text-xs text-zinc-500">
+    {% if watch_link %}
+      <span>Streaming data provided by
+        <a href="{{ watch_link }}" class="underline hover:text-zinc-300">JustWatch</a></span>
+    {% else %}
+      <span>Streaming data provided by JustWatch</span>
+    {% endif %}
+
+    <form method="post" action="{% url 'set_region' %}"
+          hx-post="{% url 'set_region' %}"
+          hx-target="#watch-section"
+          hx-swap="innerHTML"
+          hx-trigger="change"
+          class="flex items-center gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="tmdb_id" value="{{ tmdb_id }}">
+      <select name="region"
+              class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs outline-none">
+        {% for code, name in regions %}
+          <option value="{{ code }}" {% if code == region %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+{% endif %}

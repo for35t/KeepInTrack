@@ -19,6 +19,23 @@ PER_PAGE = 30
 TMDB_PAGE_SIZE = 20
 TMDB_MAX_RESULTS = 10000
 
+def _watch_context(request, tmdb_id):
+    region = request.session.get("region", "")
+    providers, watch_link = ([], "")
+    if region:
+        providers, watch_link = services.get_providers(tmdb_id, region)
+    regions = services.get_watch_regions()
+    return {
+        "tmdb_id": tmdb_id,
+        "region": region,
+        "region_name": dict(regions).get(region, region),
+        "regions": regions,
+        "suggested_region": services.suggest_region(request),
+        "providers": providers,
+        "watch_link": watch_link,
+        "logo_base": tmdb.LOGO_BASE,
+    }
+
 @login_required
 def notifications(request):
     items = Notification.objects.filter(user=request.user).select_related("show")
@@ -176,32 +193,26 @@ def show_detail(request, tmdb_id):
         show = services.get_or_sync_show(tmdb_id)
     except requests.RequestException:
         raise Http404("Couldn't load that show.")
+
     Show.objects.filter(pk=show.pk).update(last_viewed_at=timezone.now())
+
     is_following = (
         request.user.is_authenticated
         and Follow.objects.filter(user=request.user, show=show).exists()
     )
     name_to_id = services.get_genre_name_to_id()
     genre_links = [{"name": g, "id": name_to_id.get(g)} for g in show.all_genres]
-    region = request.session.get("region", "")
-    providers, watch_link = ([], "")
-    if region:
-        providers, watch_link = services.get_providers(tmdb_id, region)
-    return render(request, "show_detail.html", {
+
+    context = {
         "show": show,
         "is_following": is_following,
         "image_base": tmdb.IMAGE_BASE,
         "backdrop_base": tmdb.BACKDROP_BASE,
         "profile_base": tmdb.PROFILE_BASE,
         "genre_links": genre_links,
-        "region": region,
-        "region_name": dict(services.get_watch_regions()).get(region, region),
-        "regions": services.get_watch_regions(),
-        "suggested_region": services.suggest_region(request),
-        "providers": providers,
-        "watch_link": watch_link,
-        "logo_base": tmdb.LOGO_BASE,
-    })
+    }
+    context.update(_watch_context(request, tmdb_id))
+    return render(request, "show_detail.html", context)
 
 
 @login_required
@@ -266,6 +277,10 @@ def set_region(request):
         request.session["region"] = region
 
     tmdb_id = request.POST.get("tmdb_id")
-    if tmdb_id and tmdb_id.isdigit():
+    has_show = bool(tmdb_id and tmdb_id.isdigit())
+
+    if request.headers.get("HX-Request") and has_show:
+        return render(request, "partials/watch.html", _watch_context(request, int(tmdb_id)))
+    if has_show:
         return redirect("show_detail", tmdb_id=int(tmdb_id))
     return redirect("profile")
