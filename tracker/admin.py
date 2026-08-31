@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .models import Follow, Season, Show
-from .models import Episode, Follow, Season, Show, ShowEvent
+
+from .models import Episode, Follow, Season, Show, ShowEvent, Profile
 
 admin.site.register(Episode)
 
@@ -12,6 +12,9 @@ class SeasonInline(admin.TabularInline):
     readonly_fields = ("season_number", "name", "episode_count", "air_date")
     can_delete = False
 
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "region")
 
 @admin.register(Show)
 class ShowAdmin(admin.ModelAdmin):

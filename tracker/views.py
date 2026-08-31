@@ -10,7 +10,10 @@ from datetime import timedelta
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import Episode, Follow, Notification, Season, Show, ShowEvent, WatchProgress
+from .models import (
+    Episode, Follow, Notification, Profile, Season, Show, ShowEvent,
+    WatchProgress, get_profile,
+)
 import requests
 from django.http import Http404
 
@@ -18,8 +21,28 @@ PER_PAGE = 30
 TMDB_PAGE_SIZE = 20
 TMDB_MAX_RESULTS = 10000
 
+def _get_region(request):
+    if not request.user.is_authenticated:
+        return request.session.get("region", "")
+
+    profile = get_profile(request.user)
+    session_region = request.session.get("region", "")
+    if not profile.region and session_region:
+        profile.region = session_region
+        profile.save(update_fields=["region"])
+    return profile.region
+
+
+def _save_region(request, region):
+    if request.user.is_authenticated:
+        profile = get_profile(request.user)
+        profile.region = region
+        profile.save(update_fields=["region"])
+    else:
+        request.session["region"] = region
+
 def _watch_context(request, tmdb_id):
-    region = request.session.get("region", "")
+    region = _get_region(request)
     providers, watch_link = ([], "")
     if region:
         providers, watch_link = services.get_providers(tmdb_id, region)
@@ -305,7 +328,7 @@ def my_shows(request):
 
 @login_required
 def profile(request):
-    region = request.session.get("region", "")
+    region = _get_region(request)
     return render(request, "profile.html", {
         "region": region,
         "region_name": dict(services.get_watch_regions()).get(region, ""),
@@ -337,7 +360,7 @@ def set_region(request):
     region = request.POST.get("region", "").strip().upper()
     valid = {code for code, _ in services.get_watch_regions()}
     if region in valid:
-        request.session["region"] = region
+        _save_region(request, region)
 
     tmdb_id = request.POST.get("tmdb_id")
     has_show = bool(tmdb_id and tmdb_id.isdigit())

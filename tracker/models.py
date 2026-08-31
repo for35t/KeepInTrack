@@ -177,3 +177,18 @@ class WatchProgress(models.Model):
     @property
     def label(self):
         return f"S{self.season_number}E{self.episode_number}"
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
+    )
+    region = models.CharField(max_length=2, blank=True)
+
+    def __str__(self):
+        return f"{self.user} profile"
+
+
+def get_profile(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    return profile
