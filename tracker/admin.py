@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import Follow, Season, Show
-from .models import Episode, Follow, Season, Show
+from .models import Episode, Follow, Season, Show, ShowEvent
 
 admin.site.register(Episode)
 
@@ -20,6 +20,10 @@ class ShowAdmin(admin.ModelAdmin):
     readonly_fields = ("synced_at", "genres", "networks")
     inlines = [SeasonInline]
 
+@admin.register(ShowEvent)
+class ShowEventAdmin(admin.ModelAdmin):
+    list_display = ("show", "kind", "created_at")
+    list_filter = ("kind",)
 
 admin.site.register(Season)
 admin.site.register(Follow)

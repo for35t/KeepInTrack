@@ -4,9 +4,7 @@ from django.utils import timezone
 from django.core.cache import cache
 
 from . import tmdb
-from .models import Season, Show
-from .models import Episode, Season, Show
-from .models import Episode, Follow, Notification, Season, Show
+from .models import Episode, Follow, Notification, Season, Show, ShowEvent
 
 EPISODE_STALE_AFTER = timedelta(hours=12)
 CAST_LIMIT = 15
@@ -16,7 +14,10 @@ GENRE_CACHE_SECONDS = 60 * 60 * 24 * 7
 REGION_CACHE_KEY = "tmdb_watch_regions"
 PROVIDER_CACHE_SECONDS = 60 * 60 * 24
 STREAMING_KEYS = ("flatrate", "free", "ads")
-
+EVENT_RETENTION = timedelta(days=30)
+VIDEO_LIMIT = 3
+RECOMMENDATION_LIMIT = 8
+TRAILER_TYPES = ("Trailer", "Teaser")
 
 def get_watch_regions():
     regions = cache.get(REGION_CACHE_KEY)
@@ -91,6 +92,35 @@ def _extract_cast(data):
         })
     return people
 
+def _extract_videos(data):
+    videos = (data.get("videos") or {}).get("results") or []
+    picked = [
+        {
+            "key": v["key"],
+            "name": v.get("name") or "",
+            "type": v.get("type") or "",
+            "published_at": v.get("published_at") or "",
+        }
+        for v in videos
+        if v.get("site") == "YouTube"
+        and v.get("official")
+        and v.get("type") in TRAILER_TYPES
+    ]
+    picked.sort(key=lambda v: v["published_at"], reverse=True)
+    return picked[:VIDEO_LIMIT]
+
+
+def _extract_recommendations(data):
+    recs = (data.get("recommendations") or {}).get("results") or []
+    return [
+        {
+            "tmdb_id": r["id"],
+            "name": r.get("name") or "",
+            "poster_path": r.get("poster_path") or "",
+        }
+        for r in recs[:RECOMMENDATION_LIMIT]
+    ]
+
 def _date_or_none(value):
     return value or None
 
@@ -113,6 +143,8 @@ def sync_show(tmdb_id):
             "networks": [n["name"] for n in data.get("networks") or []],
             "genres": [g["name"] for g in data.get("genres") or []],
             "cast": _extract_cast(data),
+            "videos": _extract_videos(data),
+            "recommendations": _extract_recommendations(data),
             "next_air_date": _date_or_none(next_ep.get("air_date")),
             "next_season_number": next_ep.get("season_number"),
             "next_episode_number": next_ep.get("episode_number"),
@@ -184,38 +216,45 @@ def get_or_sync_episodes(season):
 READ_RETENTION = timedelta(days=1)
 
 
-def _notify_followers(show, kind, message):
+def _record_event(show, kind, message):
+    event = ShowEvent.objects.create(show=show, kind=kind, message=message)
     user_ids = Follow.objects.filter(show=show).values_list("user_id", flat=True)
     Notification.objects.bulk_create([
-        Notification(user_id=uid, show=show, kind=kind, message=message)
+        Notification(user_id=uid, show=show, event=event, kind=kind, message=message)
         for uid in user_ids
     ])
+    return event
 
+
+def purge_old_events():
+    cutoff = timezone.now() - EVENT_RETENTION
+    deleted, _ = ShowEvent.objects.filter(created_at__lt=cutoff).delete()
+    return deleted
 
 def detect_changes(before, show):
     if before is None:
         return
 
     if show.next_air_date and not before["next_air_date"]:
-        _notify_followers(
+        _record_event(
             show, Notification.DATE_ANNOUNCED,
             f"{show.name} — S{show.next_season_number}E{show.next_episode_number} "
             f"airs {show.next_air_date:%b %d, %Y}",
         )
     elif show.next_air_date and show.next_air_date != before["next_air_date"]:
-        _notify_followers(
+        _record_event(
             show, Notification.DATE_CHANGED,
             f"{show.name} — next episode moved to {show.next_air_date:%b %d, %Y}",
         )
 
     if show.number_of_seasons > before["number_of_seasons"]:
-        _notify_followers(
+        _record_event(
             show, Notification.SEASON_ADDED,
             f"{show.name} — season {show.number_of_seasons} added",
         )
 
     if show.status != before["status"]:
-        _notify_followers(
+        _record_event(
             show, Notification.STATUS_CHANGED,
             f"{show.name} — status is now {show.status}",
         )

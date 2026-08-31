@@ -18,6 +18,8 @@ class Show(models.Model):
     extra_genres = models.JSONField(default=list, blank=True)
     genres = models.JSONField(default=list, blank=True)
     cast = models.JSONField(default=list, blank=True)
+    videos = models.JSONField(default=list, blank=True)
+    recommendations = models.JSONField(default=list, blank=True)
 
     next_air_date = models.DateField(null=True, blank=True)
     next_season_number = models.IntegerField(null=True, blank=True)
@@ -101,6 +103,29 @@ class Episode(models.Model):
     def __str__(self):
         return f"S{self.season.season_number}E{self.episode_number} — {self.name}"
 
+class ShowEvent(models.Model):
+    DATE_ANNOUNCED = "date_announced"
+    DATE_CHANGED = "date_changed"
+    SEASON_ADDED = "season_added"
+    STATUS_CHANGED = "status_changed"
+
+    KIND_CHOICES = [
+        (DATE_ANNOUNCED, "Air date announced"),
+        (DATE_CHANGED, "Air date changed"),
+        (SEASON_ADDED, "New season"),
+        (STATUS_CHANGED, "Status changed"),
+    ]
+
+    show = models.ForeignKey(Show, on_delete=models.CASCADE, related_name="events")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    message = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.show.name} — {self.message}"
 
 class Notification(models.Model):
     DATE_ANNOUNCED = "date_announced"
@@ -119,6 +144,10 @@ class Notification(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
     show = models.ForeignKey(Show, on_delete=models.CASCADE, related_name="notifications")
+    event = models.ForeignKey(
+        ShowEvent, on_delete=models.CASCADE, related_name="notifications",
+        null=True, blank=True,
+    )
     kind = models.CharField(max_length=20, choices=KIND_CHOICES)
     message = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -129,3 +158,22 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.message}"
+
+class WatchProgress(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="watch_progress"
+    )
+    show = models.ForeignKey(Show, on_delete=models.CASCADE, related_name="watch_progress")
+    season_number = models.IntegerField()
+    episode_number = models.IntegerField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "show")
+
+    def __str__(self):
+        return f"{self.user} — {self.show.name} S{self.season_number}E{self.episode_number}"
+
+    @property
+    def label(self):
+        return f"S{self.season_number}E{self.episode_number}"

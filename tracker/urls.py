@@ -16,4 +16,6 @@ urlpatterns = [
     path("notifications/<int:pk>/delete/", views.delete_notification, name="delete_notification"),
     path("notifications/clear-read/", views.clear_read_notifications, name="clear_read_notifications"),
     path("set-region/", views.set_region, name="set_region"),
+    path("show/<int:tmdb_id>/progress/<int:season_number>/<int:episode_number>/",
+         views.set_progress, name="set_progress"),
 ]

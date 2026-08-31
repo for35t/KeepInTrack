@@ -17,8 +17,10 @@ def get_watch_regions():
     return _get("/watch/providers/regions")
 
 def get_tv(tmdb_id):
-    return _get(f"/tv/{tmdb_id}", append_to_response="aggregate_credits")
-
+    return _get(
+        f"/tv/{tmdb_id}",
+        append_to_response="aggregate_credits,videos,recommendations",
+    )
 
 def _get(path, **params):
     headers = {"Authorization": f"Bearer {os.environ['TMDB_READ_TOKEN']}"}

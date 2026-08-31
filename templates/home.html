@@ -2,41 +2,94 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold">Coming up</h1>
 
 {% if not user.is_authenticated %}
+  <h1 class="text-2xl font-semibold">Home</h1>
   <p class="text-zinc-500 mt-4">
     <a href="{% url 'login' %}" class="underline hover:text-zinc-300">Log in</a> to see what's coming up.
   </p>
-{% elif not upcoming %}
-  <p class="text-zinc-500 mt-4">
-    Nothing yet. <a href="{% url 'explore' %}" class="underline hover:text-zinc-300">Find something to follow.</a>
-  </p>
-{% endif %}
+{% else %}
 
-<div class="mt-6 space-y-3">
-  {% for show in upcoming %}
-    <a href="{% url 'show_detail' show.tmdb_id %}"
-       class="flex gap-4 items-center border border-zinc-800 rounded p-3 hover:border-zinc-600">
-      {% if show.poster_path %}
-        <img src="{{ image_base }}{{ show.poster_path }}" alt="" class="w-12 rounded shrink-0">
-      {% endif %}
-      <div class="flex-1">
-        <p class="text-sm">{{ show.name }}</p>
-        <p class="text-xs text-zinc-500">
-          {% if show.release_state == "scheduled" %}
-            S{{ show.next_season_number }}E{{ show.next_episode_number }}
-          {% else %}
-            {{ show.networks|join:" · " }}
+  {% if airing %}
+    <h2 class="text-lg font-semibold mb-3">Airing this week</h2>
+    <div class="space-y-2 mb-10">
+      {% for episode in airing %}
+        <a href="{% url 'show_detail' episode.season.show.tmdb_id %}"
+           class="flex gap-4 items-center border border-zinc-800 rounded p-3 hover:border-zinc-600">
+          {% if episode.still_path %}
+            <img src="{{ still_base }}{{ episode.still_path }}" alt=""
+                 class="w-28 rounded shrink-0">
           {% endif %}
-        </p>
-      </div>
-      {% if show.release_state == "scheduled" %}
-        <span class="text-sm text-emerald-400">{{ show.next_air_date|date:"M j, Y" }}</span>
-      {% else %}
-        <span class="text-sm text-amber-400">TBA</span>
-      {% endif %}
-    </a>
-  {% endfor %}
-</div>
+          <div class="flex-1">
+            <p class="text-sm">{{ episode.season.show.name }}</p>
+            <p class="text-xs text-zinc-500">
+              S{{ episode.season.season_number }}E{{ episode.episode_number }} · {{ episode.name }}
+            </p>
+          </div>
+          <span class="text-sm text-emerald-400">{{ episode.air_date|date:"D, M j" }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if events %}
+    <h2 class="text-lg font-semibold mb-3">Announcements</h2>
+    <div class="space-y-2 mb-10">
+      {% for event in events %}
+        <a href="{% url 'show_detail' event.show.tmdb_id %}"
+           class="flex gap-4 items-center border border-zinc-800 rounded p-3 hover:border-zinc-600">
+          {% if event.show.poster_path %}
+            <img src="{{ image_base }}{{ event.show.poster_path }}" alt=""
+                 class="w-10 rounded shrink-0">
+          {% endif %}
+          <p class="flex-1 text-sm">{{ event.message }}</p>
+          <span class="text-xs text-zinc-500">{{ event.created_at|timesince }} ago</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if trailers %}
+    <h2 class="text-lg font-semibold mb-3">New trailers</h2>
+    <div class="flex gap-4 overflow-x-auto pb-2 mb-10">
+      {% for item in trailers %}
+        <a href="https://www.youtube.com/watch?v={{ item.video.key }}"
+           target="_blank" rel="noopener"
+           class="w-64 shrink-0 group">
+          <img src="https://img.youtube.com/vi/{{ item.video.key }}/hqdefault.jpg" alt=""
+               class="w-full rounded border border-zinc-800 group-hover:border-zinc-600">
+          <p class="text-sm mt-2 truncate">{{ item.show.name }}</p>
+          <p class="text-xs text-zinc-500 truncate">{{ item.video.type }} · {{ item.video.name }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if recommendations %}
+    <h2 class="text-lg font-semibold mb-3">Because you follow…</h2>
+    <div class="flex gap-4 overflow-x-auto pb-2">
+      {% for rec in recommendations %}
+        <a href="{% url 'show_detail' rec.tmdb_id %}" class="w-32 shrink-0 group">
+          {% if rec.poster_path %}
+            <img src="{{ image_base }}{{ rec.poster_path }}" alt=""
+                 class="w-full rounded border border-zinc-800 group-hover:border-zinc-600">
+          {% else %}
+            <div class="w-full aspect-[2/3] rounded border border-zinc-800 bg-zinc-900
+                        flex items-center justify-center text-zinc-600 text-xs">No poster</div>
+          {% endif %}
+          <p class="text-xs mt-2 truncate">{{ rec.name }}</p>
+          <p class="text-[10px] text-zinc-500 truncate">{{ rec.because }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if not airing and not events and not trailers and not recommendations %}
+    <h2 class="text-lg font-semibold">Nothing yet</h2>
+    <p class="text-zinc-500 mt-2">
+      <a href="{% url 'explore' %}" class="underline hover:text-zinc-300">Follow some shows</a> to fill this up.
+    </p>
+  {% endif %}
+
+{% endif %}
 {% endblock %}

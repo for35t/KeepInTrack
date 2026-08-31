@@ -17,8 +17,9 @@
     [x-cloak] { display: none !important; }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen">
-
+<body class="bg-zinc-950 text-zinc-100 min-h-screen"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+      
     <nav class="border-b border-zinc-800">
       <div class="px-6 flex gap-6 items-center h-14 text-sm">
       <span class="font-semibold mr-2">Tracker</span>

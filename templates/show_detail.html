@@ -49,6 +49,13 @@
       {% endif %}
     </div>
 
+    {% if progress %}
+      <div class="mt-3">
+        <span class="inline-block px-3 py-1 rounded text-sm bg-sky-500/15 text-sky-400 border border-sky-500/30">
+          Last episode seen: {{ progress.label }}</span>
+      </div>
+    {% endif %}
+
         {% if user.is_authenticated %}
           <form method="post" action="{% url 'toggle_follow' show.tmdb_id %}" class="mt-4">
             {% csrf_token %}
@@ -118,7 +125,7 @@
         <span class="text-zinc-500">{{ season.episode_count }} ep</span>
         <span class="text-zinc-500 w-20 text-right">{{ season.air_date|date:"Y"|default:"TBA" }}</span>
       </summary>
-      <div class="episode-list">
+      <div class="episode-list" id="season-{{ season.season_number }}-episodes">
         <p class="px-3 py-2 text-sm text-zinc-500">Loading…</p>
       </div>
     </details>

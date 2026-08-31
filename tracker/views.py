@@ -6,12 +6,11 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from urllib.parse import urlencode
 from . import services, tmdb
-from .models import Follow, Show, Notification
+from datetime import timedelta
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import Follow, Season, Show
-
+from .models import Episode, Follow, Notification, Season, Show, ShowEvent, WatchProgress
 import requests
 from django.http import Http404
 
@@ -65,6 +64,19 @@ def clear_read_notifications(request):
     Notification.objects.filter(user=request.user, read_at__isnull=False).delete()
     return redirect("notifications")
 
+def _annotate_progress(episodes, season_number, progress):
+    episodes = list(episodes)
+    for episode in episodes:
+        if progress is None:
+            episode.watched = False
+            episode.is_current = False
+        else:
+            position = (season_number, episode.episode_number)
+            current = (progress.season_number, progress.episode_number)
+            episode.watched = position <= current
+            episode.is_current = position == current
+    return episodes
+
 def _paged(fetch, page):
     start = (page - 1) * PER_PAGE
     first_page = start // TMDB_PAGE_SIZE + 1
@@ -106,17 +118,51 @@ def signup(request):
     return render(request, "registration/signup.html", {"form": form})
 
 def home(request):
-    upcoming = []
-    if request.user.is_authenticated:
-        upcoming = (
-            Show.objects
-            .filter(followers__user=request.user)
-            .filter(Q(next_air_date__isnull=False) | Q(status__in=Show.RETURNING_STATUSES))
-            .order_by(F("next_air_date").asc(nulls_last=True), "name")
+    if not request.user.is_authenticated:
+        return render(request, "home.html", {})
+
+    today = timezone.localdate()
+    followed = list(Show.objects.filter(followers__user=request.user))
+    followed_ids = {show.tmdb_id for show in followed}
+
+    airing = (
+        Episode.objects
+        .filter(
+            season__show__followers__user=request.user,
+            air_date__gte=today,
+            air_date__lte=today + timedelta(days=7),
         )
+        .select_related("season", "season__show")
+        .order_by("air_date")
+    )
+
+    events = list(
+        ShowEvent.objects
+        .filter(show__followers__user=request.user)
+        .select_related("show")[:8]
+    )
+
+    trailers = [
+        {"show": show, "video": video}
+        for show in followed
+        for video in show.videos
+    ]
+    trailers.sort(key=lambda t: t["video"].get("published_at") or "", reverse=True)
+
+    seen = {}
+    for show in followed:
+        for rec in show.recommendations:
+            if rec["tmdb_id"] in followed_ids or rec["tmdb_id"] in seen:
+                continue
+            seen[rec["tmdb_id"]] = {**rec, "because": show.name}
+
     return render(request, "home.html", {
-        "upcoming": upcoming,
+        "airing": airing,
+        "events": events,
+        "trailers": trailers[:8],
+        "recommendations": list(seen.values())[:12],
         "image_base": tmdb.IMAGE_BASE,
+        "still_base": tmdb.STILL_BASE,
     })
 
 
@@ -203,6 +249,10 @@ def show_detail(request, tmdb_id):
     name_to_id = services.get_genre_name_to_id()
     genre_links = [{"name": g, "id": name_to_id.get(g)} for g in show.all_genres]
 
+    progress = None
+    if request.user.is_authenticated:
+        progress = WatchProgress.objects.filter(user=request.user, show=show).first()
+
     context = {
         "show": show,
         "is_following": is_following,
@@ -210,10 +260,10 @@ def show_detail(request, tmdb_id):
         "backdrop_base": tmdb.BACKDROP_BASE,
         "profile_base": tmdb.PROFILE_BASE,
         "genre_links": genre_links,
+        "progress": progress,
     }
     context.update(_watch_context(request, tmdb_id))
     return render(request, "show_detail.html", context)
-
 
 @login_required
 @require_POST
@@ -235,6 +285,12 @@ def my_shows(request):
             F("next_air_date").asc(nulls_last=True), "name"
         )
     )
+
+    progress_map = {
+        p.show_id: p for p in WatchProgress.objects.filter(user=request.user)
+    }
+    for show in shows:
+        show.progress = progress_map.get(show.id)
 
     available = sorted({genre for show in shows for genre in show.all_genres})
     if selected:
@@ -264,8 +320,15 @@ def season_episodes(request, tmdb_id, season_number):
         episodes = services.get_or_sync_episodes(season)
     except requests.RequestException:
         episodes = season.episodes.all()
+
+    progress = None
+    if request.user.is_authenticated:
+        progress = WatchProgress.objects.filter(user=request.user, show=show).first()
+
     return render(request, "partials/episodes.html", {
-        "episodes": episodes,
+        "episodes": _annotate_progress(episodes, season_number, progress),
+        "tmdb_id": tmdb_id,
+        "season_number": season_number,
         "still_base": tmdb.STILL_BASE,
     })
 
@@ -284,3 +347,26 @@ def set_region(request):
     if has_show:
         return redirect("show_detail", tmdb_id=int(tmdb_id))
     return redirect("profile")
+
+@login_required
+@require_POST
+def set_progress(request, tmdb_id, season_number, episode_number):
+    show = get_object_or_404(Show, tmdb_id=tmdb_id)
+    progress = WatchProgress.objects.filter(user=request.user, show=show).first()
+
+    if progress and (progress.season_number, progress.episode_number) == (season_number, episode_number):
+        progress.delete()
+        progress = None
+    else:
+        progress, _ = WatchProgress.objects.update_or_create(
+            user=request.user, show=show,
+            defaults={"season_number": season_number, "episode_number": episode_number},
+        )
+
+    season = get_object_or_404(Season, show=show, season_number=season_number)
+    return render(request, "partials/episodes.html", {
+        "episodes": _annotate_progress(season.episodes.all(), season_number, progress),
+        "tmdb_id": tmdb_id,
+        "season_number": season_number,
+        "still_base": tmdb.STILL_BASE,
+    })

@@ -1,21 +1,36 @@
 {% for episode in episodes %}
-  <details class="border-t border-zinc-800">
+  <details class="border-t border-zinc-800 {% if episode.watched %}opacity-50{% endif %}">
     <summary class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-900">
       <span class="text-zinc-500 w-8 shrink-0">E{{ episode.episode_number }}</span>
       <span class="flex-1">{{ episode.name|default:"TBA" }}</span>
+
+      {% if user.is_authenticated %}
+        <button type="button"
+                hx-post="{% url 'set_progress' tmdb_id season_number episode.episode_number %}"
+                hx-target="#season-{{ season_number }}-episodes"
+                hx-swap="innerHTML"
+                onclick="event.stopPropagation()"
+                title="{% if episode.is_current %}Clear progress{% else %}Mark watched up to here{% endif %}"
+                class="shrink-0 w-6 h-6 rounded-full border text-xs leading-none
+                       {% if episode.is_current %}bg-emerald-500 border-emerald-500 text-zinc-950
+                       {% elif episode.watched %}border-zinc-700 text-zinc-500
+                       {% else %}border-zinc-700 text-transparent hover:text-zinc-500{% endif %}">✓</button>
+      {% endif %}
+
       {% if episode.runtime %}
         <span class="text-xs text-zinc-500">{{ episode.runtime }}m</span>
       {% endif %}
       <span class="text-xs text-zinc-500 w-24 text-right">{{ episode.air_date|date:"M j, Y"|default:"TBA" }}</span>
     </summary>
+
     <div class="px-3 pb-3 pl-14 flex gap-4">
-     {% if episode.still_path %}
-      <img src="{{ still_base }}{{ episode.still_path }}" alt=""
-           class="w-40 rounded border border-zinc-800 shrink-0 self-start">
-     {% endif %}
-     <p class="text-sm text-zinc-400 leading-relaxed">
-       {{ episode.overview|default:"No summary yet." }}
-     </p>
+      {% if episode.still_path %}
+        <img src="{{ still_base }}{{ episode.still_path }}" alt=""
+             class="w-40 rounded border border-zinc-800 shrink-0 self-start">
+      {% endif %}
+      <p class="text-sm text-zinc-400 leading-relaxed">
+        {{ episode.overview|default:"No summary yet." }}
+      </p>
     </div>
   </details>
 {% empty %}
