@@ -148,6 +148,7 @@ def sync_show(tmdb_id):
             "next_air_date": _date_or_none(next_ep.get("air_date")),
             "next_season_number": next_ep.get("season_number"),
             "next_episode_number": next_ep.get("episode_number"),
+            "origin_country": data.get("origin_country") or [],
         },
     )
 

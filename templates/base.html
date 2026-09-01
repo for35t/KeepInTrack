@@ -1,5 +1,4 @@
 {% load static %}
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -15,56 +14,84 @@
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
     [x-cloak] { display: none !important; }
+
+    .shelf { scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    .shelf:hover { scrollbar-color: rgb(82 82 91) transparent; }
+    .shelf::-webkit-scrollbar { height: 3px; }
+    .shelf::-webkit-scrollbar-track { background: transparent; }
+    .shelf::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; transition: background .35s ease; }
+    .shelf:hover::-webkit-scrollbar-thumb { background: rgb(82 82 91); }
+
+    .blob { position: absolute; border-radius: 9999px; filter: blur(110px); }
+    @keyframes drift-a { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(14vw,8vh) scale(1.35); } 66% { transform: translate(6vw,-5vh) scale(.9); } }
+    @keyframes drift-b { 0%,100% { transform: translate(0,0) scale(1.2); } 33% { transform: translate(-16vw,-9vh) scale(.8); } 66% { transform: translate(-6vw,7vh) scale(1.1); } }
+    @keyframes drift-c { 0%,100% { transform: translate(0,0) scale(.85); } 50% { transform: translate(10vw,-12vh) scale(1.4); } }
+    @keyframes drift-d { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-9vw,10vh) scale(.95); } }
+    @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.18); } }
+    @keyframes hue { 0%,100% { filter: hue-rotate(0deg); } 50% { filter: hue-rotate(25deg); } }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen"
+
+<body class="bg-zinc-950 text-zinc-100 min-h-screen overflow-x-hidden"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-      
-    <nav class="border-b border-zinc-800">
-      <div class="px-6 flex gap-6 items-center h-14 text-sm">
-      <span class="font-semibold mr-2">Tracker</span>
+
+  {% block backdrop %}
+    <div class="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+      <div class="absolute -top-1/4 -left-1/4 w-[70vw] h-[70vw] rounded-full bg-violet-900 opacity-25 blur-[130px]"></div>
+      <div class="absolute top-1/3 -right-1/4 w-[65vw] h-[65vw] rounded-full bg-blue-950 opacity-50 blur-[130px]"></div>
+      <div class="absolute -bottom-1/3 left-1/5 w-[55vw] h-[55vw] rounded-full bg-indigo-900 opacity-25 blur-[130px]"></div>
+    </div>
+  {% endblock %}
+  <nav x-data="{ scrolled: false }"
+       @scroll.window="scrolled = window.scrollY > 160"
+       :class="scrolled ? 'bg-zinc-950/20 backdrop-blur-md border-transparent' : 'bg-zinc-950 border-zinc-800'"
+       class="sticky top-0 z-50 border-b transition-all duration-300 group">
+
+    <div :class="scrolled ? 'opacity-40 group-hover:opacity-100' : 'opacity-100'"
+         class="px-6 flex gap-6 items-center h-14 text-sm transition-opacity duration-300">
+
+      <span class="font-semibold mr-2 text-violet-400 tracking-tight">Tracker</span>
 
       <a href="{% url 'home' %}"
-         class="{% if request.resolver_match.url_name == 'home' %}text-white{% else %}text-zinc-500 hover:text-zinc-300{% endif %}">Home</a>
+         class="{% if request.resolver_match.url_name == 'home' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Home</a>
 
       <a href="{% url 'explore' %}"
-         class="{% if request.resolver_match.url_name == 'explore' %}text-white{% else %}text-zinc-500 hover:text-zinc-300{% endif %}">Explore</a>
+         class="{% if request.resolver_match.url_name == 'explore' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Explore</a>
 
       <a href="{% url 'my_shows' %}"
-         class="{% if request.resolver_match.url_name == 'my_shows' %}text-white{% else %}text-zinc-500 hover:text-zinc-300{% endif %}">My Shows</a>
+         class="{% if request.resolver_match.url_name == 'my_shows' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">My Shows</a>
 
       <a href="{% url 'profile' %}"
-         class="ml-auto {% if request.resolver_match.url_name == 'profile' %}text-white{% else %}text-zinc-500 hover:text-zinc-300{% endif %}">Profile</a>
-
-      <a href="{% url 'notifications' %}"
-         class="relative {% if request.resolver_match.url_name == 'notifications' %}text-white{% else %}text-zinc-500 hover:text-zinc-300{% endif %}">
-        Alerts
-        {% if unread_count %}
-          <span class="absolute -top-2 -right-3 bg-zinc-100 text-zinc-900 text-[10px] px-1.5 rounded-full">{{ unread_count }}</span>
-        {% endif %}
-      </a>
+         class="ml-auto {% if request.resolver_match.url_name == 'profile' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Profile</a>
 
       {% if user.is_authenticated %}
+        <a href="{% url 'notifications' %}"
+           class="relative {% if request.resolver_match.url_name == 'notifications' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">
+          Alerts
+          {% if unread_count %}
+            <span class="absolute -top-2 -right-3 bg-violet-500 text-white text-[10px] px-1.5 rounded-full">{{ unread_count }}</span>
+          {% endif %}
+        </a>
         <form method="post" action="{% url 'logout' %}">
           {% csrf_token %}
-          <button type="submit" class="text-zinc-500 hover:text-zinc-300">Log out</button>
+          <button type="submit" class="text-zinc-400 hover:text-white transition-colors">Log out</button>
         </form>
       {% else %}
-        <a href="{% url 'login' %}" class="text-zinc-500 hover:text-zinc-300">Log in</a>
+        <a href="{% url 'login' %}" class="text-zinc-400 hover:text-white transition-colors">Log in</a>
       {% endif %}
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 py-10">
+  <main class="max-w-6xl mx-auto px-4 py-10 relative z-10">
     {% block content %}{% endblock %}
   </main>
 
-
-    <footer class="border-t border-zinc-800 mt-16">
+  <footer class="border-t border-zinc-900 mt-16 relative z-10">
     <div class="max-w-6xl mx-auto px-4 py-6 flex items-center gap-3 text-xs text-zinc-500">
       <img src="{% static 'tracker/tmdb-logo.svg' %}" alt="TMDB" class="h-4">
       <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
     </div>
   </footer>
+
 </body>
 </html>

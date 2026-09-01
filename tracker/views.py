@@ -17,6 +17,28 @@ from .models import (
 import requests
 from django.http import Http404
 
+COUNTRIES = [
+    ("US", "United States"), ("GB", "United Kingdom"), ("JP", "Japan"),
+    ("KR", "South Korea"), ("CA", "Canada"), ("AU", "Australia"),
+    ("FR", "France"), ("DE", "Germany"), ("ES", "Spain"), ("IT", "Italy"),
+    ("SE", "Sweden"), ("DK", "Denmark"), ("NO", "Norway"), ("BE", "Belgium"),
+    ("BR", "Brazil"), ("MX", "Mexico"), ("AR", "Argentina"),
+    ("IN", "India"), ("CN", "China"), ("TW", "Taiwan"), ("TH", "Thailand"),
+    ("TR", "Turkey"), ("IL", "Israel"), ("RU", "Russia"),
+]
+
+STATUSES = [
+    ("0", "Returning"), ("2", "In production"),
+    ("1", "Planned"), ("3", "Ended"), ("4", "Cancelled"),
+]
+
+PILL_CLASSES = {
+    "genre": "bg-violet-500/15 text-violet-300 border-violet-500/40",
+    "year": "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+    "country": "bg-sky-500/15 text-sky-300 border-sky-500/40",
+    "status": "bg-amber-500/15 text-amber-300 border-amber-500/40",
+}
+
 PER_PAGE = 30
 TMDB_PAGE_SIZE = 20
 TMDB_MAX_RESULTS = 10000
@@ -191,7 +213,11 @@ def home(request):
 
 def explore(request):
     query = request.GET.get("q", "").strip()
-    selected = request.GET.getlist("genre")
+    genres = request.GET.getlist("genre")
+    year = request.GET.get("year", "").strip()
+    country = request.GET.get("country", "").strip()
+    status = request.GET.get("status", "").strip()
+
     try:
         page = max(1, int(request.GET.get("page", 1)))
     except ValueError:
@@ -201,16 +227,22 @@ def explore(request):
     results = []
     has_next = False
     error = None
+    filtering = bool(genres or year or country or status)
 
     try:
-        if selected:
+        if filtering:
             results, has_next = _paged(
-                lambda p: tmdb.discover_tv(",".join(selected), page=p), page
+                lambda p: tmdb.discover_tv(
+                    page=p,
+                    with_genres=",".join(genres),
+                    first_air_date_year=year if year.isdigit() else "",
+                    with_origin_country=country,
+                    with_status=status,
+                ),
+                page,
             )
         elif query:
-            results, has_next = _paged(
-                lambda p: tmdb.search_tv(query, page=p), page
-            )
+            results, has_next = _paged(lambda p: tmdb.search_tv(query, page=p), page)
     except requests.RequestException:
         error = "Search is unavailable right now. Try again in a moment."
 
@@ -219,16 +251,26 @@ def explore(request):
             genre_map[gid] for gid in show.get("genre_ids") or [] if gid in genre_map
         ]
 
-    options = sorted(genre_map.items(), key=lambda pair: pair[1])
-    chips = _genre_chips(options, selected, [("q", query)] if query else None)
-    selected_names = [
-        genre_map[int(g)] for g in selected if g.isdigit() and int(g) in genre_map
+    genre_chips = [
+        {
+            "label": name,
+            "active": str(gid) in genres,
+            "url": _param_url(request, "genre", gid, add=str(gid) not in genres),
+        }
+        for gid, name in sorted(genre_map.items(), key=lambda pair: pair[1])
     ]
 
     context = {
         "query": query,
-        "chips": chips,
-        "selected_names": selected_names,
+        "genres": genres,
+        "year": year,
+        "country": country,
+        "status": status,
+        "genre_chips": genre_chips,
+        "applied": _applied_filters(request, genre_map, genres, year, country, status),
+        "years": range(timezone.localdate().year + 1, 1959, -1),
+        "countries": COUNTRIES,
+        "statuses": STATUSES,
         "results": results,
         "error": error,
         "page": page,
@@ -241,21 +283,50 @@ def explore(request):
         return render(request, "partials/explore_results.html", context)
     return render(request, "explore.html", context)
 
-def _genre_chips(options, selected, extra_params=None):
-    chips = []
-    for value, label in options:
-        value = str(value)
-        active = value in selected
-        remaining = [v for v in selected if v != value] if active else selected + [value]
-        params = [("genre", v) for v in remaining]
-        if extra_params:
-            params.extend(extra_params)
-        chips.append({
-            "label": label,
-            "active": active,
-            "url": f"?{urlencode(params)}" if params else "?",
+def _param_url(request, key, value, add):
+    params = request.GET.copy()
+    if key == "genre":
+        values = params.getlist("genre")
+        if add and str(value) not in values:
+            values.append(str(value))
+        elif not add:
+            values = [v for v in values if v != str(value)]
+        params.setlist("genre", values)
+    elif add:
+        params[key] = value
+    else:
+        params.pop(key, None)
+    params.pop("page", None)
+    return f"?{params.urlencode()}" if params else "?"
+
+
+def _applied_filters(request, genre_map, genres, year, country, status):
+    applied = []
+    for gid in genres:
+        if gid.isdigit() and int(gid) in genre_map:
+            applied.append({
+                "label": genre_map[int(gid)],
+                "classes": PILL_CLASSES["genre"],
+                "remove": _param_url(request, "genre", gid, add=False),
+            })
+    if year:
+        applied.append({
+            "label": year, "classes": PILL_CLASSES["year"],
+            "remove": _param_url(request, "year", year, add=False),
         })
-    return chips
+    if country:
+        applied.append({
+            "label": dict(COUNTRIES).get(country, country),
+            "classes": PILL_CLASSES["country"],
+            "remove": _param_url(request, "country", country, add=False),
+        })
+    if status:
+        applied.append({
+            "label": dict(STATUSES).get(status, status),
+            "classes": PILL_CLASSES["status"],
+            "remove": _param_url(request, "status", status, add=False),
+        })
+    return applied
 
 def show_detail(request, tmdb_id):
     try:
@@ -321,7 +392,7 @@ def my_shows(request):
 
     return render(request, "my_shows.html", {
         "shows": shows,
-        "chips": _genre_chips([(g, g) for g in available], selected),
+        # "chips": _genre_chips([(g, g) for g in available], selected),
         "image_base": tmdb.IMAGE_BASE,
     })
 

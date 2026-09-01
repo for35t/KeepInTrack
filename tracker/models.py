@@ -15,6 +15,7 @@ class Show(models.Model):
     status = models.CharField(max_length=50, blank=True)
     number_of_seasons = models.IntegerField(default=0)
     networks = models.JSONField(default=list, blank=True)
+    origin_country = models.JSONField(default=list, blank=True)
     extra_genres = models.JSONField(default=list, blank=True)
     genres = models.JSONField(default=list, blank=True)
     cast = models.JSONField(default=list, blank=True)

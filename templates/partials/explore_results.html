@@ -1,56 +1,106 @@
-<div class="flex flex-wrap gap-2 mt-6 max-w-4xl">
-  {% for chip in chips %}
-    <a href="{{ chip.url }}"
-       class="text-xs px-2 py-1 rounded border {% if chip.active %}bg-zinc-100 text-zinc-900 border-zinc-100{% else %}bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600{% endif %}">{{ chip.label }}</a>
-  {% endfor %}
+{% if applied %}
+  <div class="flex flex-wrap items-center gap-2 mt-5 max-w-4xl">
+    {% for pill in applied %}
+      <span class="inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border {{ pill.classes }}">
+        {{ pill.label }}
+        <a href="{{ pill.remove }}" class="opacity-60 hover:opacity-100 transition-opacity">✕</a>
+      </span>
+    {% endfor %}
+    <a href="{% url 'explore' %}{% if query %}?q={{ query }}{% endif %}"
+       class="text-xs text-zinc-500 hover:text-zinc-300 ml-1">clear all</a>
+  </div>
+{% endif %}
+
+<div class="flex flex-wrap items-start gap-2 mt-5 max-w-4xl">
+
+  <div x-data="{ open: false }" class="relative">
+    <button type="button" @click="open = !open"
+            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:border-zinc-600 transition-colors">
+      Genre
+      {% if genres %}<span class="text-violet-400">({{ genres|length }})</span>{% endif %}
+      <span class="text-zinc-500 ml-1">▾</span>
+    </button>
+    <div x-show="open" @click.outside="open = false" x-cloak
+         class="absolute left-0 mt-2 z-30 w-80 p-3 rounded-lg bg-zinc-950/95 backdrop-blur-md border border-zinc-800 shadow-2xl shadow-black/60">
+      <div class="flex flex-wrap gap-1.5">
+        {% for chip in genre_chips %}
+          <a href="{{ chip.url }}"
+             class="text-xs px-2 py-1 rounded border transition-colors
+                    {% if chip.active %}bg-violet-500/20 text-violet-300 border-violet-500/50{% else %}bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600{% endif %}">{{ chip.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <form method="get" class="flex flex-wrap gap-2">
+    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    {% for gid in genres %}<input type="hidden" name="genre" value="{{ gid }}">{% endfor %}
+
+    <select name="year" onchange="this.form.submit()"
+            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-emerald-500/50">
+      <option value="">Year</option>
+      {% for y in years %}
+        <option value="{{ y }}" {% if year == y|stringformat:'s' %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="country" onchange="this.form.submit()"
+            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-sky-500/50">
+      <option value="">Country</option>
+      {% for code, name in countries %}
+        <option value="{{ code }}" {% if country == code %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="status" onchange="this.form.submit()"
+            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-amber-500/50">
+      <option value="">Status</option>
+      {% for code, name in statuses %}
+        <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </form>
 </div>
 
 {% if error %}
   <p class="text-red-400 text-sm mt-6">{{ error }}</p>
 {% endif %}
 
-{% if selected_names %}
-  <p class="text-sm text-zinc-500 mt-6">Most popular in {{ selected_names|join:" + " }}</p>
-{% elif query and not results %}
+{% if query and not results and not applied %}
   <p class="text-zinc-500 mt-6">No results for “{{ query }}”.</p>
+{% elif applied and not results %}
+  <p class="text-zinc-500 mt-6">Nothing matches that combination.</p>
 {% endif %}
 
-<div class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">  {% for show in results %}
-    <a href="{% url 'show_detail' show.id %}" class="block group">
+<div class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+  {% for show in results %}
+    <a href="{% url 'show_detail' show.id %}"
+       class="block group transition-transform duration-300 ease-out hover:scale-105 hover:z-20 relative p-2">
       {% if show.poster_path %}
         <img src="{{ image_base }}{{ show.poster_path }}" alt=""
-             class="w-full rounded border border-zinc-800 group-hover:border-zinc-600">
+             class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
       {% else %}
-        <div class="w-full aspect-[2/3] rounded border border-zinc-800 bg-zinc-900
+        <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900
                     flex items-center justify-center text-zinc-600 text-xs">No poster</div>
       {% endif %}
-      <p class="mt-2 text-sm group-hover:text-white">{{ show.name }}</p>
+      <p class="mt-2 text-sm truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ show.name }}</p>
       <p class="text-xs text-zinc-500">{{ show.first_air_date|slice:":4"|default:"—" }}</p>
-      {% if show.genre_names %}
-        <div class="flex flex-wrap gap-1 mt-1">
-          {% for genre in show.genre_names|slice:":2" %}
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-500">{{ genre }}</span>
-          {% endfor %}
-        </div>
-      {% endif %}
     </a>
   {% endfor %}
 </div>
 
 {% if results and page > 1 or has_next %}
-  <div class="flex items-center justify-center gap-4 mt-8 text-sm">
+  <div class="flex items-center justify-center gap-4 mt-10 text-sm">
     {% if prev_url %}
-      <a href="{{ prev_url }}" class="px-3 py-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">← Previous</a>
+      <a href="{{ prev_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900/60 transition-colors">← Previous</a>
     {% else %}
-      <span class="px-3 py-1.5 rounded border border-zinc-900 text-zinc-700">← Previous</span>
+      <span class="px-3 py-1.5 rounded-lg text-zinc-700">← Previous</span>
     {% endif %}
-
     <span class="text-zinc-500">Page {{ page }}</span>
-
     {% if next_url %}
-      <a href="{{ next_url }}" class="px-3 py-1.5 rounded border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600">Next →</a>
+      <a href="{{ next_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900/60 transition-colors">Next →</a>
     {% else %}
-      <span class="px-3 py-1.5 rounded border border-zinc-900 text-zinc-700">Next →</span>
+      <span class="px-3 py-1.5 rounded-lg text-zinc-700">Next →</span>
     {% endif %}
   </div>
 {% endif %}
