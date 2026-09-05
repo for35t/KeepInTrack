@@ -4,12 +4,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Tracker{% endblock %}</title>
+  <title>{% block title %}KeepInTrack{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'tracker/favicon.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
+    .font-display { font-family: 'Space Grotesk', system-ui, sans-serif; }
+    .filterlist { scrollbar-width: thin; scrollbar-color: rgb(39 39 42) #000; }
+    .filterlist::-webkit-scrollbar { width: 6px; }
+    .filterlist::-webkit-scrollbar-track { background: #000; }
+    .filterlist::-webkit-scrollbar-thumb { background: rgb(39 39 42); border-radius: 9999px; }
+    .filterlist::-webkit-scrollbar-thumb:hover { background: rgb(63 63 70); }
+    .dotfield {
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(167,139,250,.50) 1.2px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(59,130,246,.38) 1.4px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(192,132,252,.30) 1px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(30,41,59,.85) 1.6px, transparent 0);
+      background-size: 46px 46px, 63px 63px, 79px 79px, 27px 27px;
+      background-position: 0 0, 13px 21px, 31px 9px, 7px 15px;
+    }
+
+    .trail-dot {
+      position: absolute;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(196,181,253,1) 1.6px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(96,165,250,.95) 1.8px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(232,121,249,.9) 1.4px, transparent 0),
+        radial-gradient(circle at 1px 1px, rgba(100,116,139,.9) 2px, transparent 0);
+      background-size: 46px 46px, 63px 63px, 79px 79px, 27px 27px;
+      -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
+      mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 70%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .blob, [style*="kenburns"], [style*="hue"] { animation: none !important; }
+      .trail-dot { display: none; }
+    }
+
+    @keyframes trailfade { from { opacity: 1; } to { opacity: 0; } }
+
     button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
@@ -22,7 +62,7 @@
     .shelf::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; transition: background .35s ease; }
     .shelf:hover::-webkit-scrollbar-thumb { background: rgb(82 82 91); }
 
-    .blob { position: absolute; border-radius: 9999px; filter: blur(110px); }
+    .blob { position: absolute; border-radius: 9999px; filter: blur(70px); transform: translateZ(0); }
     @keyframes drift-a { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(14vw,8vh) scale(1.35); } 66% { transform: translate(6vw,-5vh) scale(.9); } }
     @keyframes drift-b { 0%,100% { transform: translate(0,0) scale(1.2); } 33% { transform: translate(-16vw,-9vh) scale(.8); } 66% { transform: translate(-6vw,7vh) scale(1.1); } }
     @keyframes drift-c { 0%,100% { transform: translate(0,0) scale(.85); } 50% { transform: translate(10vw,-12vh) scale(1.4); } }
@@ -32,66 +72,157 @@
   </style>
 </head>
 
-<body class="bg-zinc-950 text-zinc-100 min-h-screen overflow-x-hidden"
+<body class="bg-zinc-950 text-zinc-100 min-h-screen overflow-x-hidden flex flex-col"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
   {% block backdrop %}
-    <div class="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
-      <div class="absolute -top-1/4 -left-1/4 w-[70vw] h-[70vw] rounded-full bg-violet-900 opacity-25 blur-[130px]"></div>
-      <div class="absolute top-1/3 -right-1/4 w-[65vw] h-[65vw] rounded-full bg-blue-950 opacity-50 blur-[130px]"></div>
-      <div class="absolute -bottom-1/3 left-1/5 w-[55vw] h-[55vw] rounded-full bg-indigo-900 opacity-25 blur-[130px]"></div>
+    <div class="fixed inset-0 -z-10 pointer-events-none overflow-hidden" aria-hidden="true">
+      <div class="absolute inset-0 blur-[40px]">
+        <div class="blob bg-blue-950 w-[75vw] h-[75vw] top-[-25%] left-[-15%] opacity-90"></div>
+        <div class="blob bg-blue-950 w-[70vw] h-[70vw] bottom-[-30%] right-[-10%] opacity-85"></div>
+        <div class="blob bg-violet-950 w-[38vw] h-[38vw] top-[10%] right-[15%] opacity-70"></div>
+        <div class="blob bg-purple-900 w-[30vw] h-[30vw] bottom-[15%] left-[25%] opacity-45"></div>
+        <div class="blob bg-violet-900 w-[26vw] h-[26vw] top-[55%] right-[35%] opacity-35"></div>
+      </div>
+
+      <div class="dotfield absolute inset-0 opacity-70 blur-[14px]"></div>
+      <div class="absolute inset-0 bg-zinc-950/75"></div>
     </div>
   {% endblock %}
-  <nav x-data="{ scrolled: false }"
+
+  <nav x-data="{ scrolled: false, menu: false }"
        @scroll.window="scrolled = window.scrollY > 160"
-       :class="scrolled ? 'bg-zinc-950/20 backdrop-blur-md border-transparent' : 'bg-zinc-950 border-zinc-800'"
+       :class="scrolled && !menu ? 'bg-zinc-950/20 backdrop-blur-md border-transparent' : 'bg-zinc-950/80 backdrop-blur-md border-zinc-800/60'"
        class="sticky top-0 z-50 border-b transition-all duration-300 group">
 
-    <div :class="scrolled ? 'opacity-40 group-hover:opacity-100' : 'opacity-100'"
-         class="px-6 flex gap-6 items-center h-14 text-sm transition-opacity duration-300">
+    <div :class="scrolled && !menu ? 'opacity-40 group-hover:opacity-100' : 'opacity-100'"
+         class="px-4 md:px-6 flex gap-6 items-center h-14 text-sm transition-opacity duration-300">
 
-      <span class="font-semibold mr-2 text-violet-400 tracking-tight">Tracker</span>
+      <a href="{% url 'home' %}" class="font-display font-bold text-violet-400 hover:text-violet-300 transition-colors tracking-tight">KeepInTrack</a>
 
-      <a href="{% url 'home' %}"
-         class="{% if request.resolver_match.url_name == 'home' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Home</a>
+      <div class="hidden md:flex gap-6 items-center flex-1">
+        <a href="{% url 'home' %}"
+           class="{% if request.resolver_match.url_name == 'home' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Home</a>
+        <a href="{% url 'explore' %}"
+           class="{% if request.resolver_match.url_name == 'explore' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Explore</a>
+        <a href="{% url 'my_shows' %}"
+           class="{% if request.resolver_match.url_name == 'my_shows' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">My Shows</a>
 
-      <a href="{% url 'explore' %}"
-         class="{% if request.resolver_match.url_name == 'explore' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Explore</a>
+        <a href="{% url 'profile' %}"
+           class="ml-auto {% if request.resolver_match.url_name == 'profile' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Profile</a>
 
-      <a href="{% url 'my_shows' %}"
-         class="{% if request.resolver_match.url_name == 'my_shows' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">My Shows</a>
-
-      <a href="{% url 'profile' %}"
-         class="ml-auto {% if request.resolver_match.url_name == 'profile' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Profile</a>
-
-      {% if user.is_authenticated %}
-        <a href="{% url 'notifications' %}"
-           class="relative {% if request.resolver_match.url_name == 'notifications' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">
-          Alerts
-          {% if unread_count %}
-            <span class="absolute -top-2 -right-3 bg-violet-500 text-white text-[10px] px-1.5 rounded-full">{{ unread_count }}</span>
+        {% if user.is_authenticated %}
+          {% if user.is_staff %}
+            <a href="{% url 'admin_users' %}"
+               class="{% if request.resolver_match.url_name == 'admin_users' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">Manage</a>
           {% endif %}
-        </a>
-        <form method="post" action="{% url 'logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="text-zinc-400 hover:text-white transition-colors">Log out</button>
-        </form>
-      {% else %}
-        <a href="{% url 'login' %}" class="text-zinc-400 hover:text-white transition-colors">Log in</a>
-      {% endif %}
+          <a href="{% url 'notifications' %}"
+             class="relative {% if request.resolver_match.url_name == 'notifications' %}text-white{% else %}text-zinc-400 hover:text-white{% endif %} transition-colors">
+            Alerts
+            {% if unread_count %}
+              <span class="absolute -top-2 -right-3 bg-violet-500 text-white text-[10px] px-1.5 rounded-full">{{ unread_count }}</span>
+            {% endif %}
+          </a>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="text-zinc-400 hover:text-white transition-colors">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="text-zinc-400 hover:text-white transition-colors">Log in</a>
+        {% endif %}
+      </div>
+
+      <button type="button" @click="menu = !menu"
+              class="md:hidden ml-auto relative w-8 h-8 flex items-center justify-center text-zinc-300">
+        <span x-show="!menu" class="text-lg leading-none">☰</span>
+        <span x-show="menu" x-cloak class="text-lg leading-none">✕</span>
+        {% if unread_count %}
+          <span x-show="!menu" class="absolute top-0 right-0 w-2 h-2 rounded-full bg-violet-500"></span>
+        {% endif %}
+      </button>
+    </div>
+
+    <div x-show="menu" x-cloak x-collapse class="md:hidden border-t border-zinc-900 bg-zinc-950/95 backdrop-blur-md">
+      <div class="px-4 py-2 flex flex-col text-sm">
+        <a href="{% url 'home' %}" @click="menu = false" class="py-3 border-b border-zinc-900 {% if request.resolver_match.url_name == 'home' %}text-white{% else %}text-zinc-400{% endif %}">Home</a>
+        <a href="{% url 'explore' %}" @click="menu = false" class="py-3 border-b border-zinc-900 {% if request.resolver_match.url_name == 'explore' %}text-white{% else %}text-zinc-400{% endif %}">Explore</a>
+        <a href="{% url 'my_shows' %}" @click="menu = false" class="py-3 border-b border-zinc-900 {% if request.resolver_match.url_name == 'my_shows' %}text-white{% else %}text-zinc-400{% endif %}">My Shows</a>
+        <a href="{% url 'profile' %}" @click="menu = false" class="py-3 border-b border-zinc-900 {% if request.resolver_match.url_name == 'profile' %}text-white{% else %}text-zinc-400{% endif %}">Profile</a>
+
+        {% if user.is_authenticated %}
+          <a href="{% url 'notifications' %}" @click="menu = false" class="py-3 border-b border-zinc-900 flex items-center gap-2 {% if request.resolver_match.url_name == 'notifications' %}text-white{% else %}text-zinc-400{% endif %}">
+            Alerts
+            {% if unread_count %}
+              <span class="bg-violet-500 text-white text-[10px] px-1.5 rounded-full">{{ unread_count }}</span>
+            {% endif %}
+          </a>
+          {% if user.is_staff %}
+            <a href="{% url 'admin_users' %}" @click="menu = false" class="py-3 border-b border-zinc-900 {% if request.resolver_match.url_name == 'admin_users' %}text-white{% else %}text-zinc-400{% endif %}">Manage</a>
+          {% endif %}
+          <form method="post" action="{% url 'logout' %}" class="py-3">
+            {% csrf_token %}
+            <button type="submit" class="text-zinc-400">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" @click="menu = false" class="py-3 text-zinc-400">Log in</a>
+        {% endif %}
+      </div>
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 py-10 relative z-10">
+  {% if user.is_authenticated and has_email and not email_verified %}
+    <div x-data="{ show: true }" x-show="show" class="relative z-20 border-b border-amber-500/20 bg-amber-500/10">
+      <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center gap-3 text-sm">
+        <span class="text-amber-300 flex-1">Confirm your email address to finish setting up your account.</span>
+        <form method="post" action="{% url 'resend_verification' %}">
+          {% csrf_token %}
+          <button type="submit" class="text-amber-300 underline hover:text-amber-200 transition-colors">Resend</button>
+        </form>
+        <button type="button" @click="show = false" class="text-amber-300/60 hover:text-amber-300 px-1">✕</button>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if messages %}
+    <div class="relative z-20 max-w-6xl mx-auto px-4 pt-4">
+      {% for message in messages %}
+        <p class="text-sm px-3 py-2 rounded-lg mb-2
+                  {% if message.tags == 'error' %}bg-red-500/10 text-red-400 border border-red-500/30
+                  {% else %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30{% endif %}">
+          {{ message }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="w-full max-w-6xl mx-auto px-4 py-10 relative z-20 flex-1">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="border-t border-zinc-900 mt-16 relative z-10">
+  <footer class="border-t border-zinc-900/60 mt-16 relative z-10 shrink-0">
     <div class="max-w-6xl mx-auto px-4 py-6 flex items-center gap-3 text-xs text-zinc-500">
       <img src="{% static 'tracker/tmdb-logo.svg' %}" alt="TMDB" class="h-4">
       <span>This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
     </div>
   </footer>
+
+  <script>
+    (function () {
+      let saved = null;
+
+      document.body.addEventListener('htmx:beforeRequest', function (e) {
+        if (e.target.closest && e.target.closest('[id^="season-"], [id^="ep-btn-"]')) {
+          saved = window.scrollY;
+        }
+      });
+
+      document.body.addEventListener('htmx:afterSettle', function () {
+        if (saved === null) return;
+        const y = saved;
+        saved = null;
+        requestAnimationFrame(function () { window.scrollTo(0, y); });
+      });
+    })();
+  </script>
 
 </body>
 </html>

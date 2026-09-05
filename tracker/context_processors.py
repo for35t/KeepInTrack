@@ -1,4 +1,4 @@
-from .models import Notification
+from .models import Notification, get_profile
 
 
 def unread_count(request):
@@ -7,5 +7,7 @@ def unread_count(request):
     return {
         "unread_count": Notification.objects.filter(
             user=request.user, read_at__isnull=True
-        ).count()
+        ).count(),
+        "email_verified": get_profile(request.user).email_verified,
+        "has_email": bool(request.user.email),
     }

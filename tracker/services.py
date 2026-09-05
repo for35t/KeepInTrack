@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 import requests
 from django.utils import timezone
 from django.core.cache import cache
@@ -15,9 +15,10 @@ REGION_CACHE_KEY = "tmdb_watch_regions"
 PROVIDER_CACHE_SECONDS = 60 * 60 * 24
 STREAMING_KEYS = ("flatrate", "free", "ads")
 EVENT_RETENTION = timedelta(days=30)
-VIDEO_LIMIT = 3
-RECOMMENDATION_LIMIT = 8
-TRAILER_TYPES = ("Trailer", "Teaser")
+VIDEO_LIMIT = 8
+RECOMMENDATION_LIMIT = 20
+TRAILER_TYPES = ("Trailer", "Teaser", "Clip", "Featurette")
+
 
 def get_watch_regions():
     regions = cache.get(REGION_CACHE_KEY)
@@ -34,14 +35,15 @@ def get_watch_regions():
     return regions
 
 
-def get_providers(tmdb_id, region):
-    key = f"providers:{tmdb_id}:{region}"
+def get_providers(tmdb_id, region, media_type="tv"):
+    key = f"providers:{media_type}:{tmdb_id}:{region}"
     cached = cache.get(key)
     if cached is not None:
         return cached
 
     try:
-        data = tmdb.get_watch_providers(tmdb_id)
+        fetch = tmdb.get_watch_providers if media_type == "tv" else tmdb.get_movie_providers
+        data = fetch(tmdb_id)
     except requests.RequestException:
         return [], ""
 
@@ -92,6 +94,7 @@ def _extract_cast(data):
         })
     return people
 
+
 def _extract_videos(data):
     videos = (data.get("videos") or {}).get("results") or []
     picked = [
@@ -122,7 +125,12 @@ def _extract_recommendations(data):
     ]
 
 def _date_or_none(value):
-    return value or None
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (ValueError, TypeError):
+        return None
 
 
 def sync_show(tmdb_id):
@@ -265,3 +273,118 @@ def purge_old_notifications():
     cutoff = timezone.now() - READ_RETENTION
     deleted, _ = Notification.objects.filter(read_at__lt=cutoff).delete()
     return deleted
+
+
+MAJOR_PROVIDERS = {
+    "netflix",
+    "amazon prime video",
+    "disney plus",
+    "hbo max",
+    "max",
+    "apple tv+",
+    "apple tv plus",
+    "paramount plus",
+    "crunchyroll",
+}
+
+
+def get_region_providers(region):
+    if not region:
+        return []
+    key = f"providers_list:{region}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    try:
+        data = tmdb.get_tv_providers(region)
+    except requests.RequestException:
+        return []
+    providers = sorted(
+        (
+            (p["provider_id"], p["provider_name"])
+            for p in data.get("results") or []
+            if p.get("provider_name", "").lower() in MAJOR_PROVIDERS
+        ),
+        key=lambda pair: pair[1],
+    )
+    cache.set(key, providers, GENRE_CACHE_SECONDS)
+    return providers
+
+POPULAR_CACHE_KEY = "tmdb_trending_tv"
+POPULAR_CACHE_SECONDS = 60 * 60 * 6
+
+
+def get_popular_shows():
+    shows = cache.get(POPULAR_CACHE_KEY)
+    if shows is None:
+        try:
+            data = tmdb.get_trending_tv()
+        except requests.RequestException:
+            return []
+        shows = [
+            {
+                "tmdb_id": s["id"],
+                "name": s.get("name") or "",
+                "poster_path": s.get("poster_path") or "",
+            }
+            for s in data.get("results") or []
+        ]
+        cache.set(POPULAR_CACHE_KEY, shows, POPULAR_CACHE_SECONDS)
+    return shows
+
+MOVIE_GENRE_CACHE_KEY = "tmdb_movie_genres"
+MOVIE_CACHE_SECONDS = 60 * 60 * 12
+
+
+def get_movie_genre_map():
+    genres = cache.get(MOVIE_GENRE_CACHE_KEY)
+    if genres is None:
+        try:
+            data = tmdb.get_movie_genres()
+        except requests.RequestException:
+            return {}
+        genres = {g["id"]: g["name"] for g in data.get("genres") or []}
+        cache.set(MOVIE_GENRE_CACHE_KEY, genres, GENRE_CACHE_SECONDS)
+    return genres
+
+
+def _extract_movie_cast(credits):
+    return [
+        {
+            "name": person.get("name") or "",
+            "character": person.get("character") or "",
+            "profile_path": person.get("profile_path") or "",
+        }
+        for person in (credits.get("cast") or [])[:CAST_LIMIT]
+    ]
+
+
+def get_movie(tmdb_id):
+    key = f"movie:{tmdb_id}"
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    data = tmdb.get_movie(tmdb_id)
+    movie = {
+        "tmdb_id": data["id"],
+        "title": data.get("title") or "",
+        "tagline": data.get("tagline") or "",
+        "overview": data.get("overview") or "",
+        "poster_path": data.get("poster_path") or "",
+        "backdrop_path": data.get("backdrop_path") or "",
+        "release_date": _date_or_none(data.get("release_date")),
+        "runtime": data.get("runtime"),
+        "genres": [g["name"] for g in data.get("genres") or []],
+        "cast": _extract_movie_cast(data.get("credits") or {}),
+        "recommendations": [
+            {
+                "tmdb_id": r["id"],
+                "name": r.get("title") or "",
+                "poster_path": r.get("poster_path") or "",
+            }
+            for r in (data.get("recommendations") or {}).get("results") or []
+        ][:RECOMMENDATION_LIMIT],
+    }
+    cache.set(key, movie, MOVIE_CACHE_SECONDS)
+    return movie

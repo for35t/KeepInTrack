@@ -1,38 +1,64 @@
+<div x-data="{ through: {{ watched_through }}, current: {{ current_ep }} }">
 {% for episode in episodes %}
-  <details class="border-t border-zinc-800 {% if episode.watched %}opacity-50{% endif %}">
-    <summary class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-900">
-      <span class="text-zinc-500 w-8 shrink-0">E{{ episode.episode_number }}</span>
-      <span class="flex-1">{{ episode.name|default:"TBA" }}</span>
+  {% with n=episode.episode_number %}
+  <div class="flex flex-col sm:flex-row gap-3 sm:gap-5 px-3 py-5 rounded-xl transition-colors hover:bg-white/[0.02]">
 
-      {% if user.is_authenticated %}
-        <button type="button"
-                hx-post="{% url 'set_progress' tmdb_id season_number episode.episode_number %}"
-                hx-target="#season-{{ season_number }}-episodes"
-                hx-swap="innerHTML"
-                onclick="event.stopPropagation()"
-                title="{% if episode.is_current %}Clear progress{% else %}Mark watched up to here{% endif %}"
-                class="shrink-0 w-6 h-6 rounded-full border text-xs leading-none
-                       {% if episode.is_current %}bg-emerald-500 border-emerald-500 text-zinc-950
-                       {% elif episode.watched %}border-zinc-700 text-zinc-500
-                       {% else %}border-zinc-700 text-transparent hover:text-zinc-500{% endif %}">✓</button>
-      {% endif %}
+    {% if episode.still_path %}
+      <img src="{{ still_base }}{{ episode.still_path }}" alt=""
+           :class="through >= {{ n }} ? 'opacity-40' : 'opacity-100'"
+            class="w-full sm:w-52 rounded-lg shrink-0 self-start transition-opacity duration-300">
+    {% else %}
+      <div class="w-full sm:w-52 aspect-video rounded-lg bg-zinc-900 shrink-0
+              flex items-center justify-center text-zinc-700 text-xs">No image</div>
+    {% endif %}
 
-      {% if episode.runtime %}
-        <span class="text-xs text-zinc-500">{{ episode.runtime }}m</span>
-      {% endif %}
-      <span class="text-xs text-zinc-500 w-24 text-right">{{ episode.air_date|date:"M j, Y"|default:"TBA" }}</span>
-    </summary>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-start gap-3">
+        <h3 class="flex-1 text-base font-medium transition-colors duration-300"
+            :class="through >= {{ n }} ? 'text-zinc-500' : 'text-zinc-100'">
+          <span class="text-zinc-600 mr-2">{{ n }}</span>{{ episode.name|default:"TBA" }}
+        </h3>
 
-    <div class="px-3 pb-3 pl-14 flex gap-4">
-      {% if episode.still_path %}
-        <img src="{{ still_base }}{{ episode.still_path }}" alt=""
-             class="w-40 rounded border border-zinc-800 shrink-0 self-start">
-      {% endif %}
-      <p class="text-sm text-zinc-400 leading-relaxed">
-        {{ episode.overview|default:"No summary yet." }}
+        {% if user.is_authenticated %}
+          <button type="button"
+                  hx-post="{% url 'set_progress' tmdb_id season_number n %}"
+                  hx-swap="none"
+                  @click="if (current === {{ n }}) { through = 0; current = -1 } else { through = {{ n }}; current = {{ n }} }"
+                  class="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs transition-colors duration-300"
+                  :class="current === {{ n }}
+                    ? 'bg-sky-500 border-sky-500 text-zinc-950 font-medium'
+                    : (through >= {{ n }}
+                        ? 'border-sky-500/40 text-sky-400/80 hover:border-sky-500 hover:text-sky-300'
+                        : 'border-zinc-700 text-zinc-500 hover:border-sky-500/60 hover:text-sky-400')">
+            <span>✓</span>
+            <span x-text="through >= {{ n }} ? 'Seen' : 'Mark seen'">Mark seen</span>
+          </button>
+        {% endif %}
+      </div>
+
+      <p class="text-xs mt-1.5 transition-colors duration-300"
+         :class="through >= {{ n }} ? 'text-zinc-600' : 'text-zinc-500'">
+        {{ episode.air_date|date:"F j, Y"|default:"TBA" }}{% if episode.runtime %} · {{ episode.runtime }}m{% endif %}
       </p>
+
+      <div x-data="{ expanded: false }" class="mt-3">
+        <p class="text-sm leading-relaxed transition-colors duration-300"
+           :class="[expanded ? '' : 'line-clamp-3', through >= {{ n }} ? 'text-zinc-500' : 'text-zinc-400']">
+          {{ episode.overview|default:"No summary yet." }}
+        </p>
+        {% if episode.overview|length > 200 %}
+          <button type="button" @click="expanded = !expanded"
+                  class="text-xs text-violet-400 hover:text-violet-300 transition-colors mt-1.5">
+            <span x-show="!expanded">See more</span>
+            <span x-show="expanded" x-cloak>See less</span>
+          </button>
+        {% endif %}
+      </div>
     </div>
-  </details>
-{% empty %}
-  <p class="px-3 py-2 text-sm text-zinc-500">No episodes listed.</p>
+  </div>
+  {% endwith %}
 {% endfor %}
+{% if not episodes %}
+  <p class="px-3 py-4 text-sm text-zinc-500">No episodes listed.</p>
+{% endif %}
+</div>

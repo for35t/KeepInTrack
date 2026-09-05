@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Manage users{% endblock %}
+
+{% block content %}
+<h1 class="font-display text-2xl font-bold">Users</h1>
+
+{% if messages %}
+  {% for message in messages %}
+    <p class="mt-4 text-sm px-3 py-2 rounded-lg
+              {% if message.tags == 'error' %}bg-red-500/10 text-red-400 border border-red-500/30
+              {% else %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30{% endif %}">
+      {{ message }}</p>
+  {% endfor %}
+{% endif %}
+
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mt-8">
+  <div>
+    <p class="font-display text-3xl font-bold">{{ total_users }}</p>
+    <p class="text-xs text-zinc-500 mt-1">Total users</p>
+  </div>
+  <div>
+    <p class="font-display text-3xl font-bold text-emerald-400">{{ active_30d }}</p>
+    <p class="text-xs text-zinc-500 mt-1">Active in 30 days</p>
+  </div>
+  <div>
+    <p class="font-display text-3xl font-bold text-amber-400">{{ never_logged_in }}</p>
+    <p class="text-xs text-zinc-500 mt-1">Never logged in</p>
+  </div>
+  <div>
+    <p class="font-display text-3xl font-bold text-violet-400">{{ staff_count }}</p>
+    <p class="text-xs text-zinc-500 mt-1">Staff</p>
+  </div>
+</div>
+
+<div class="mt-12">
+  <div class="hidden sm:flex items-center gap-4 px-3 pb-3 text-xs uppercase tracking-widest text-zinc-600">
+    <span class="flex-1">User</span>
+    <span class="w-24 text-right">Joined</span>
+    <span class="w-28 text-right">Last login</span>
+    <span class="w-14 text-right">Shows</span>
+    <span class="w-8"></span>
+  </div>
+
+  {% for u in users %}
+    <div class="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-2 px-3 py-4 rounded-xl hover:bg-white/[0.03] transition-colors">
+      <div class="flex-1 min-w-0 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-violet-600 to-blue-800
+                     flex items-center justify-center text-xs font-medium">
+          {{ u.username|first|upper }}
+        </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="truncate">{{ u.username }}</span>
+            {% if u.is_superuser %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/40 shrink-0">Admin</span>
+            {% elif u.is_staff %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/40 shrink-0">Staff</span>
+            {% endif %}
+          </div>
+          <p class="text-xs truncate {% if u.email %}text-zinc-500{% else %}text-zinc-700{% endif %}">
+            {{ u.email|default:"No email on file" }}
+          </p>
+        </div>
+      </div>
+
+      <span class="w-28 text-right text-sm text-zinc-500">{{ u.date_joined|date:"M j, Y" }}</span>
+
+      <span class="w-32 text-right text-sm {% if u.last_login %}text-zinc-500{% else %}text-zinc-700{% endif %}">
+        {% if u.last_login %}{{ u.last_login|timesince }} ago{% else %}Never{% endif %}
+      </span>
+
+      <span class="w-16 text-right text-sm text-zinc-500">{{ u.follow_count }}</span>
+
+      <div class="w-8 flex justify-end">
+        {% if u.pk != request.user.pk and not u.is_staff and not u.is_superuser %}
+          <div x-data="{ confirm: false }" class="relative">
+            <button type="button" @click="confirm = true"
+                    class="text-zinc-700 hover:text-red-400 transition-colors px-1">✕</button>
+
+            <div x-show="confirm" @click.outside="confirm = false" x-cloak
+                 class="absolute right-0 top-full mt-2 z-40 w-64 p-3 rounded-lg bg-black
+                        border border-zinc-900 shadow-2xl shadow-black/80">
+              <p class="text-xs text-zinc-400 leading-relaxed">
+                Delete <span class="text-zinc-100">{{ u.username }}</span>?
+                This also removes their {{ u.follow_count }} follow{{ u.follow_count|pluralize }},
+                watch progress and alerts. Permanent.
+              </p>
+              <div class="flex gap-2 mt-3">
+                <form method="post" action="{% url 'admin_delete_user' u.pk %}">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="text-xs px-2.5 py-1 rounded bg-red-500/90 hover:bg-red-500 text-white transition-colors">
+                    Delete</button>
+                </form>
+                <button type="button" @click="confirm = false"
+                        class="text-xs px-2.5 py-1 rounded border border-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors">
+                  Cancel</button>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

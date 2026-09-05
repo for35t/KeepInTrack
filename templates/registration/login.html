@@ -2,32 +2,41 @@
 {% block title %}Log in{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold">Log in</h1>
+<div class="max-w-sm mx-auto mt-10">
+  <h1 class="font-display text-2xl font-bold text-center">Welcome back</h1>
+  <p class="text-sm text-zinc-500 text-center mt-2">Log in to pick up where you left off.</p>
 
-<form method="post" class="mt-6 max-w-sm space-y-4">
-  {% csrf_token %}
+  <form method="post" class="mt-8 space-y-5">
+    {% csrf_token %}
 
-  {% if form.errors %}
-    <p class="text-sm text-red-400">Incorrect username or password.</p>
-  {% endif %}
+    {% if form.errors %}
+      <p class="text-sm px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30">
+        Incorrect username or password.</p>
+    {% endif %}
 
-  <div>
-    <label class="block text-sm text-zinc-400 mb-1">Username</label>
-    {{ form.username }}
-  </div>
+    {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="block text-xs uppercase tracking-widest text-zinc-500 mb-2">
+          {{ field.label }}</label>
+        <input type="{% if 'password' in field.name %}password{% else %}text{% endif %}"
+               name="{{ field.name }}" id="{{ field.id_for_label }}"
+               value="{{ field.value|default:'' }}" autocomplete="off"
+               class="w-full bg-black/60 border border-zinc-900 rounded-lg px-3 py-2.5 text-sm
+                      outline-none focus:border-violet-500/60 transition-colors">
+      </div>
+    {% endfor %}
 
-  <div>
-    <label class="block text-sm text-zinc-400 mb-1">Password</label>
-    {{ form.password }}
-  </div>
+    <button type="submit"
+            class="w-full bg-violet-500 hover:bg-violet-400 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors">
+      Log in</button>
+    <p class="text-xs text-center">
+      <a href="{% url 'password_reset' %}" class="text-zinc-500 hover:text-zinc-300 transition-colors">Forgot your password?</a>
+    </p>
+  </form>
 
-  <button type="submit"
-          class="bg-zinc-100 text-zinc-900 rounded px-4 py-2 text-sm font-medium">Log in</button>
-</form>
-
-<p class="text-sm text-zinc-500 mt-6">
-  No account?
-  <a href="{% url 'signup' %}" class="underline hover:text-zinc-300">Sign up</a>
-</p>
-
+  <p class="text-sm text-zinc-500 mt-8 text-center">
+    No account?
+    <a href="{% url 'signup' %}" class="text-violet-400 hover:text-violet-300 transition-colors">Sign up</a>
+  </p>
+</div>
 {% endblock %}

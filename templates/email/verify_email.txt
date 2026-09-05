@@ -1,0 +1,15 @@
+Hi {{ username }},
+
+Thanks for joining KeepInTrack — your one place for keeping up with the
+shows you actually watch. Follow a series and we'll tell you when the
+next season is announced, when the next episode airs, and where to
+stream it.
+
+Confirm your email address to finish setting up your account:
+
+{{ protocol }}://{{ domain }}{% url 'verify_email' uid token %}
+
+If you didn't create this account, you can ignore this message and
+nothing further will happen.
+
+— KeepInTrack

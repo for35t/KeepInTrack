@@ -18,4 +18,9 @@ urlpatterns = [
     path("set-region/", views.set_region, name="set_region"),
     path("show/<int:tmdb_id>/progress/<int:season_number>/<int:episode_number>/",
          views.set_progress, name="set_progress"),
+    path("movie/<int:tmdb_id>/", views.movie_detail, name="movie_detail"),
+    path("manage/users/", views.admin_users, name="admin_users"),
+    path("manage/users/<int:pk>/delete/", views.admin_delete_user, name="admin_delete_user"),
+    path("verify/<uidb64>/<token>/", views.verify_email, name="verify_email"),
+    path("verify/resend/", views.resend_verification, name="resend_verification"),
 ]

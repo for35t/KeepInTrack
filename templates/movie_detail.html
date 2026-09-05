@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }}{% endblock %}
+
+{% block backdrop %}
+  {% if movie.backdrop_path %}
+    <div class="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+      <img src="{{ backdrop_base }}{{ movie.backdrop_path }}" alt=""
+           class="w-full h-full object-cover blur-2xl scale-110 opacity-40">
+      <div class="absolute inset-0 bg-zinc-950/75"></div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+  {% if movie.poster_path %}
+    <img src="{{ image_base }}{{ movie.poster_path }}" alt=""
+      class="w-32 sm:w-48 rounded-lg border border-zinc-800 shrink-0 shadow-2xl shadow-black/50"
+  {% endif %}
+
+  <div>
+    <h1 class="font-display text-3xl font-bold tracking-tight">{{ movie.title }}
+      <span class="text-zinc-500 font-normal">({{ movie.release_date|date:"Y" }})</span>
+    </h1>
+
+    <p class="text-sm text-zinc-400 mt-1">
+      Film{% if movie.runtime %} · {{ movie.runtime }}m{% endif %}
+      {% if movie.release_date %} · {{ movie.release_date|date:"F j, Y" }}{% endif %}
+    </p>
+
+    {% if movie.genres %}
+      <div class="flex flex-wrap gap-2 mt-3">
+        {% for genre in movie.genres %}
+          <span class="text-xs px-2 py-1 rounded bg-zinc-900/70 border border-zinc-800 text-zinc-400">{{ genre }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if movie.tagline %}
+      <p class="text-sm text-zinc-500 italic mt-4">{{ movie.tagline }}</p>
+    {% endif %}
+
+    <p class="mt-4 text-sm text-zinc-300 leading-relaxed max-w-2xl">{{ movie.overview }}</p>
+  </div>
+</div>
+
+{% if movie.cast %}
+<div x-data="{ open: false }" class="mt-10">
+  <button type="button" @click="open = !open"
+          class="flex items-center gap-2 font-display text-lg font-bold">
+    Cast
+    <span class="text-sm text-zinc-500 transition-transform duration-200"
+          :class="open ? 'rotate-90' : ''">›</span>
+  </button>
+  <div x-show="open" x-collapse>
+    <div class="grid grid-cols-3 sm:grid-cols-5 gap-4 mt-4">
+      {% for person in movie.cast %}
+        <div class="text-center">
+          {% if person.profile_path %}
+            <img src="{{ profile_base }}{{ person.profile_path }}" alt=""
+                 class="w-full rounded border border-zinc-800">
+          {% else %}
+            <div class="w-full aspect-[2/3] rounded border border-zinc-800 bg-zinc-900
+                        flex items-center justify-center text-zinc-600 text-xs">?</div>
+          {% endif %}
+          <p class="text-xs mt-2 truncate">{{ person.name }}</p>
+          <p class="text-xs text-zinc-500 truncate">{{ person.character }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<h2 class="font-display text-lg font-bold mt-12 mb-3">Where to watch</h2>
+<div id="watch-section">
+  {% include "partials/watch.html" %}
+</div>
+
+{% if movie.recommendations %}
+  <h2 class="font-display text-lg font-bold mt-12 mb-4">More like this</h2>
+  <div class="shelf flex gap-2 overflow-x-auto pb-6 pt-4 -mx-4 px-4">
+    {% for rec in movie.recommendations %}
+      <a href="{% url 'movie_detail' rec.tmdb_id %}"
+         class="w-32 shrink-0 group transition-transform duration-300 ease-out hover:scale-110 hover:z-20 relative">
+        {% if rec.poster_path %}
+          <img src="{{ image_base }}{{ rec.poster_path }}" alt=""
+               class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
+        {% else %}
+          <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900
+                      flex items-center justify-center text-zinc-600 text-xs">No poster</div>
+        {% endif %}
+        <p class="text-xs mt-2 truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ rec.name }}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -3,88 +3,103 @@
     {% for pill in applied %}
       <span class="inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border {{ pill.classes }}">
         {{ pill.label }}
-        <a href="{{ pill.remove }}" class="opacity-60 hover:opacity-100 transition-opacity">✕</a>
+        <a href="{{ pill.remove }}" hx-get="{{ pill.remove }}" hx-target="#explore-results"
+           hx-swap="innerHTML" hx-push-url="true"
+           class="opacity-60 hover:opacity-100 transition-opacity">✕</a>
       </span>
     {% endfor %}
     <a href="{% url 'explore' %}{% if query %}?q={{ query }}{% endif %}"
+       hx-get="{% url 'explore' %}{% if query %}?q={{ query }}{% endif %}" hx-target="#explore-results"
+       hx-swap="innerHTML" hx-push-url="true"
        class="text-xs text-zinc-500 hover:text-zinc-300 ml-1">clear all</a>
   </div>
 {% endif %}
 
-<div class="flex flex-wrap items-start gap-2 mt-5 max-w-4xl">
+<div class="flex flex-wrap items-center gap-2 mt-5 max-w-4xl">
+  {% include "partials/filter_dropdown.html" with label="Genre" options=genre_chips count=genres|length hx_target="#explore-results" %}
+  {% include "partials/filter_dropdown.html" with label="Year" options=year_options count=0 hx_target="#explore-results" %}
+  {% include "partials/filter_dropdown.html" with label="Country" options=country_options count=0 hx_target="#explore-results" %}
+  {% if not browse_movies %}
+    {% include "partials/filter_dropdown.html" with label="Status" options=status_options count=0 hx_target="#explore-results" %}
+  {% endif %}
 
-  <div x-data="{ open: false }" class="relative">
-    <button type="button" @click="open = !open"
-            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 hover:border-zinc-600 transition-colors">
-      Genre
-      {% if genres %}<span class="text-violet-400">({{ genres|length }})</span>{% endif %}
-      <span class="text-zinc-500 ml-1">▾</span>
-    </button>
-    <div x-show="open" @click.outside="open = false" x-cloak
-         class="absolute left-0 mt-2 z-30 w-80 p-3 rounded-lg bg-zinc-950/95 backdrop-blur-md border border-zinc-800 shadow-2xl shadow-black/60">
-      <div class="flex flex-wrap gap-1.5">
-        {% for chip in genre_chips %}
-          <a href="{{ chip.url }}"
-             class="text-xs px-2 py-1 rounded border transition-colors
-                    {% if chip.active %}bg-violet-500/20 text-violet-300 border-violet-500/50{% else %}bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600{% endif %}">{{ chip.label }}</a>
-        {% endfor %}
-      </div>
+  <span class="w-px h-6 bg-zinc-900 mx-1"></span>
+
+  <a href="{{ browse_toggle_url }}"
+     hx-get="{{ browse_toggle_url }}" hx-target="#explore-results" hx-swap="innerHTML" hx-push-url="true"
+     class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap
+            {% if browse_movies %}bg-violet-500/15 border-violet-500/50 text-violet-300{% else %}bg-black/60 border-zinc-900 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700{% endif %}">
+    <span class="relative inline-block w-7 h-4 rounded-full transition-colors
+                 {% if browse_movies %}bg-violet-500{% else %}bg-zinc-800{% endif %}">
+      <span class="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200
+                   {% if browse_movies %}left-3.5{% else %}left-0.5{% endif %}"></span>
+    </span>
+    Browse movies
+  </a>
+
+  <div x-data="{ tip: false }" class="relative">
+    <button type="button" @mouseenter="tip = true" @mouseleave="tip = false" @click="tip = !tip"
+            class="w-5 h-5 rounded-full border border-zinc-800 text-zinc-600 text-xs
+                   hover:border-zinc-600 hover:text-zinc-400 transition-colors">!</button>
+    <div x-show="tip" x-cloak
+         class="absolute left-1/2 -translate-x-1/2 mt-2 z-40 w-60 px-3 py-2 rounded-lg
+                bg-black border border-zinc-900 shadow-2xl shadow-black/80 text-xs text-zinc-400 leading-relaxed">
+      KeepInTrack is built for tracking series. Switch this on to browse films instead — they're searchable either way.
     </div>
   </div>
+</div>
 
-  <form method="get" class="flex flex-wrap gap-2">
-    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-    {% for gid in genres %}<input type="hidden" name="genre" value="{{ gid }}">{% endfor %}
-
-    <select name="year" onchange="this.form.submit()"
-            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-emerald-500/50">
-      <option value="">Year</option>
-      {% for y in years %}
-        <option value="{{ y }}" {% if year == y|stringformat:'s' %}selected{% endif %}>{{ y }}</option>
-      {% endfor %}
-    </select>
-
-    <select name="country" onchange="this.form.submit()"
-            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-sky-500/50">
-      <option value="">Country</option>
-      {% for code, name in countries %}
-        <option value="{{ code }}" {% if country == code %}selected{% endif %}>{{ name }}</option>
-      {% endfor %}
-    </select>
-
-    <select name="status" onchange="this.form.submit()"
-            class="text-sm px-3 py-1.5 rounded-lg bg-zinc-900/70 border border-zinc-800 text-zinc-300 outline-none focus:border-amber-500/50">
-      <option value="">Status</option>
-      {% for code, name in statuses %}
-        <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ name }}</option>
-      {% endfor %}
-    </select>
-  </form>
+<div class="flex flex-wrap items-center gap-3 mt-3 max-w-4xl">
+  <span class="text-xs text-zinc-600">Filter by streaming service</span>
+  {% if region %}
+    {% include "partials/filter_dropdown.html" with label="Service" options=provider_options count=0 hx_target="#explore-results" %}
+    {% include "partials/filter_dropdown.html" with label=region_name options=region_options count=0 hx_target="#explore-results" %}
+  {% else %}
+    {% include "partials/filter_dropdown.html" with label="Choose region" options=region_options count=0 hx_target="#explore-results" %}
+  {% endif %}
 </div>
 
 {% if error %}
   <p class="text-red-400 text-sm mt-6">{{ error }}</p>
 {% endif %}
 
-{% if query and not results and not applied %}
+{% if query and not results %}
   <p class="text-zinc-500 mt-6">No results for “{{ query }}”.</p>
-{% elif applied and not results %}
+{% elif applied and not results and not query %}
   <p class="text-zinc-500 mt-6">Nothing matches that combination.</p>
 {% endif %}
 
 <div class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-  {% for show in results %}
-    <a href="{% url 'show_detail' show.id %}"
+  {% for item in results %}
+    <a href="{% if item.media_type == 'movie' %}{% url 'movie_detail' item.tmdb_id %}{% else %}{% url 'show_detail' item.tmdb_id %}{% endif %}"
        class="block group transition-transform duration-300 ease-out hover:scale-105 hover:z-20 relative p-2">
-      {% if show.poster_path %}
-        <img src="{{ image_base }}{{ show.poster_path }}" alt=""
-             class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
-      {% else %}
-        <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900
-                    flex items-center justify-center text-zinc-600 text-xs">No poster</div>
-      {% endif %}
-      <p class="mt-2 text-sm truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ show.name }}</p>
-      <p class="text-xs text-zinc-500">{{ show.first_air_date|slice:":4"|default:"—" }}</p>
+      <div class="relative">
+        {% if item.poster_path %}
+          <img src="{{ image_base }}{{ item.poster_path }}" alt=""
+               class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
+        {% else %}
+          <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900
+                      flex items-center justify-center text-zinc-600 text-xs">No poster</div>
+        {% endif %}
+
+        {% if item.media_type == 'movie' %}
+          <span class="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded
+                       bg-zinc-950/80 text-zinc-300 uppercase tracking-wide">Film</span>
+        {% endif %}
+
+        {% if query and provider %}
+          {% if item.on_provider %}
+            <span class="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded
+                         bg-fuchsia-500/90 text-white font-medium">On {{ provider_name }}</span>
+          {% else %}
+            <span class="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded
+                         bg-zinc-950/80 text-zinc-500">Not on {{ provider_name }}</span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <p class="mt-2 text-sm truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ item.name }}</p>
+      <p class="text-xs text-zinc-500">{{ item.date|slice:":4"|default:"—" }}</p>
     </a>
   {% endfor %}
 </div>
@@ -92,13 +107,13 @@
 {% if results and page > 1 or has_next %}
   <div class="flex items-center justify-center gap-4 mt-10 text-sm">
     {% if prev_url %}
-      <a href="{{ prev_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900/60 transition-colors">← Previous</a>
+      <a href="{{ prev_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors">← Previous</a>
     {% else %}
       <span class="px-3 py-1.5 rounded-lg text-zinc-700">← Previous</span>
     {% endif %}
     <span class="text-zinc-500">Page {{ page }}</span>
     {% if next_url %}
-      <a href="{{ next_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900/60 transition-colors">Next →</a>
+      <a href="{{ next_url }}" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors">Next →</a>
     {% else %}
       <span class="px-3 py-1.5 rounded-lg text-zinc-700">Next →</span>
     {% endif %}

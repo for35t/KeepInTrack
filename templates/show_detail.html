@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 {% block title %}{{ show.name }}{% endblock %}
 
+{% block backdrop %}
+  {% if show.backdrop_path %}
+    <div class="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
+      <img src="{{ backdrop_base }}{{ show.backdrop_path }}" alt=""
+           class="w-full h-full object-cover blur-2xl scale-110 opacity-40">
+      <div class="absolute inset-0 bg-zinc-950/75"></div>
+    </div>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 
-{% if show.backdrop_path %}
-  <div class="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
-    <img src="{{ backdrop_base }}{{ show.backdrop_path }}" alt=""
-         class="w-full h-full object-cover blur-2xl scale-110 opacity-40">
-    <div class="absolute inset-0 bg-zinc-950/75"></div>
-  </div>
-{% endif %}
-
-<div class="flex gap-6">
+<div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
   {% if show.poster_path %}
     <img src="{{ image_base }}{{ show.poster_path }}" alt=""
          class="w-48 rounded-lg border border-zinc-800 shrink-0 shadow-2xl shadow-black/50">
   {% endif %}
 
   <div>
-    <h1 class="text-3xl font-semibold tracking-tight">{{ show.name }}
+    <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight">{{ show.name }}
       <span class="text-zinc-500 font-normal">({{ show.first_air_date|date:"Y" }})</span>
     </h1>
 
@@ -96,6 +98,7 @@
   </div>
 </div>
 
+
 {% if show.cast %}
 <div x-data="{ open: false }" class="mt-10">
   <button type="button" @click="open = !open"
@@ -130,24 +133,42 @@
   {% include "partials/watch.html" %}
 </div>
 
-<h2 class="text-lg font-semibold mt-10 mb-3">Seasons</h2>
-<div class="space-y-2">
+<h2 class="text-lg font-semibold mt-12 mb-2">Seasons</h2>
+<div>
   {% for season in show.seasons.all %}
-    <details class="border border-zinc-800 rounded overflow-hidden bg-zinc-950/40"
-             hx-get="{% url 'season_episodes' show.tmdb_id season.season_number %}"
+    <details hx-get="{% url 'season_episodes' show.tmdb_id season.season_number %}"
              hx-trigger="toggle once"
              hx-target="find .episode-list"
              hx-swap="innerHTML">
-      <summary class="flex items-center gap-3 text-sm px-3 py-2 cursor-pointer hover:bg-zinc-900/70">
-        <span class="flex-1">{{ season.name }}</span>
+      <summary class="flex items-center gap-3 text-sm px-3 py-4 -mx-3 rounded-xl cursor-pointer hover:bg-white/[0.03] transition-colors">
+        <span class="flex-1 text-base">{{ season.name }}</span>
         <span class="text-zinc-500">{{ season.episode_count }} ep</span>
         <span class="text-zinc-500 w-20 text-right">{{ season.air_date|date:"Y"|default:"TBA" }}</span>
       </summary>
-      <div class="episode-list" id="season-{{ season.season_number }}-episodes">
-        <p class="px-3 py-2 text-sm text-zinc-500">Loading…</p>
+      <div class="episode-list pl-3" id="season-{{ season.season_number }}-episodes">
+        <p class="px-3 py-4 text-sm text-zinc-500">Loading…</p>
       </div>
     </details>
   {% endfor %}
 </div>
+
+{% if show.recommendations %}
+  <h2 class="font-display text-lg font-bold mt-12 mb-4">More like this</h2>
+  <div class="shelf flex gap-2 overflow-x-auto pb-6 pt-4 -mx-4 px-4">
+    {% for rec in show.recommendations %}
+      <a href="{% url 'show_detail' rec.tmdb_id %}"
+         class="w-32 shrink-0 group transition-transform duration-300 ease-out hover:scale-110 hover:z-20 relative">
+        {% if rec.poster_path %}
+          <img src="{{ image_base }}{{ rec.poster_path }}" alt=""
+               class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
+        {% else %}
+          <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900
+                      flex items-center justify-center text-zinc-600 text-xs">No poster</div>
+        {% endif %}
+        <p class="text-xs mt-2 truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ rec.name }}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
 
 {% endblock %}

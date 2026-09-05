@@ -2,35 +2,90 @@
 {% block title %}{{ user.username }}{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold">{{ user.username }}</h1>
-<p class="text-sm text-zinc-500 mt-1">Joined {{ user.date_joined|date:"F Y" }}</p>
+<div class="flex flex-col md:flex-row gap-10">
 
-<div class="mt-8 border border-zinc-800 rounded p-4">
-  <p class="text-sm text-zinc-400">
-    Following {{ user.follows.count }} show{{ user.follows.count|pluralize }}
-  </p>
-  <a href="{% url 'my_shows' %}" class="text-sm underline text-zinc-500 hover:text-zinc-300">View list</a>
+  <aside class="w-full md:w-64 shrink-0">
+    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-violet-600 to-blue-800
+                flex items-center justify-center font-display text-3xl font-bold">
+      {{ user.username|first|upper }}
+    </div>
+
+    <h1 class="font-display text-xl font-bold mt-4">{{ user.username }}</h1>
+    <p class="text-xs text-zinc-500 mt-1">Member since {{ user.date_joined|date:"F Y" }}</p>
+
+    <div class="mt-8">
+      <p class="text-xs uppercase tracking-widest text-zinc-500 mb-3">Streaming region</p>
+      <p class="text-sm text-zinc-300">{% if region %}{{ region_name }}{% else %}Not set{% endif %}</p>
+
+      <form method="post" action="{% url 'set_region' %}" class="mt-3 flex flex-col gap-2">
+        {% csrf_token %}
+        <select name="region"
+                class="text-sm px-2 py-1.5 rounded-lg bg-black/60 border border-zinc-900 text-zinc-300 outline-none focus:border-zinc-700">
+          {% for code, name in regions %}
+            <option value="{{ code }}"
+              {% if region %}{% if code == region %}selected{% endif %}
+              {% else %}{% if code == suggested_region %}selected{% endif %}{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit"
+                class="text-sm px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white font-medium transition-colors">
+          Save</button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="flex-1 min-w-0">
+    <h2 class="font-display text-lg font-bold mb-5">Stats</h2>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-6">
+      <div>
+        <p class="font-display text-3xl font-bold">{{ stat_following }}</p>
+        <p class="text-xs text-zinc-500 mt-1">Following</p>
+      </div>
+      <div>
+        <p class="font-display text-3xl font-bold text-emerald-400">{{ stat_airing }}</p>
+        <p class="text-xs text-zinc-500 mt-1">Scheduled</p>
+      </div>
+      <div>
+        <p class="font-display text-3xl font-bold text-amber-400">{{ stat_waiting }}</p>
+        <p class="text-xs text-zinc-500 mt-1">Waiting on a date</p>
+      </div>
+      <div>
+        <p class="font-display text-3xl font-bold text-zinc-500">{{ stat_finished }}</p>
+        <p class="text-xs text-zinc-500 mt-1">Finished</p>
+      </div>
+      <div>
+        <p class="font-display text-3xl font-bold text-sky-400">{{ stat_tracked }}</p>
+        <p class="text-xs text-zinc-500 mt-1">In progress</p>
+      </div>
+      <div>
+        <p class="font-display text-3xl font-bold truncate">{{ top_genre }}</p>
+        <p class="text-xs text-zinc-500 mt-1">Top genre</p>
+      </div>
+    </div>
+
+    {% if continue_watching %}
+      <h2 class="font-display text-lg font-bold mt-14 mb-5">Continue watching</h2>
+      <div class="shelf flex gap-2 overflow-x-auto pb-4 pt-2">
+        {% for show in continue_watching %}
+          <a href="{% url 'show_detail' show.tmdb_id %}"
+             class="w-28 shrink-0 group transition-transform duration-300 ease-out hover:scale-110 hover:z-20 relative">
+            {% if show.poster_path %}
+              <img src="{{ image_base }}{{ show.poster_path }}" alt=""
+                   class="w-full rounded-lg transition-shadow duration-300 group-hover:shadow-2xl group-hover:shadow-black/70">
+            {% else %}
+              <div class="w-full aspect-[2/3] rounded-lg bg-zinc-900"></div>
+            {% endif %}
+            <p class="text-xs mt-2 truncate opacity-70 group-hover:opacity-100 transition-opacity">{{ show.name }}</p>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="mt-14">
+      <a href="{% url 'my_shows' %}" class="text-sm text-violet-400 hover:text-violet-300 transition-colors">
+        View full library →</a>
+    </div>
+  </div>
 </div>
-
-<div class="mt-6 border border-zinc-800 rounded p-4">
-  <p class="text-sm text-zinc-400">Streaming region</p>
-  <p class="text-xs text-zinc-500 mt-1">
-    {% if region %}Currently {{ region_name }}.{% else %}Not set.{% endif %}
-    Used to show where your shows are available.
-  </p>
-
-  <form method="post" action="{% url 'set_region' %}" class="mt-3 flex items-center gap-2">
-    {% csrf_token %}
-    <select name="region"
-            class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm outline-none focus:border-zinc-600">
-      {% for code, name in regions %}
-        <option value="{{ code }}"
-          {% if region %}{% if code == region %}selected{% endif %}
-          {% else %}{% if code == suggested_region %}selected{% endif %}{% endif %}>{{ name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="bg-zinc-100 text-zinc-900 rounded px-3 py-1.5 text-sm font-medium">Save</button>
-  </form>
-</div>
-
 {% endblock %}
