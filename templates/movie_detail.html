@@ -16,11 +16,11 @@
 <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
   {% if movie.poster_path %}
     <img src="{{ image_base }}{{ movie.poster_path }}" alt=""
-      class="w-32 sm:w-48 rounded-lg border border-zinc-800 shrink-0 shadow-2xl shadow-black/50"
+         class="w-32 sm:w-48 rounded-lg border border-zinc-800 shrink-0 shadow-2xl shadow-black/50">
   {% endif %}
 
-  <div>
-    <h1 class="font-display text-3xl font-bold tracking-tight">{{ movie.title }}
+  <div class="min-w-0">
+    <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight">{{ movie.title }}
       <span class="text-zinc-500 font-normal">({{ movie.release_date|date:"Y" }})</span>
     </h1>
 
