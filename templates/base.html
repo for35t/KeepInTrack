@@ -170,18 +170,6 @@
     </div>
   </nav>
 
-  {% if user.is_authenticated and has_email and not email_verified %}
-    <div x-data="{ show: true }" x-show="show" class="relative z-20 border-b border-amber-500/20 bg-amber-500/10">
-      <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center gap-3 text-sm">
-        <span class="text-amber-300 flex-1">Confirm your email address to finish setting up your account.</span>
-        <form method="post" action="{% url 'resend_verification' %}">
-          {% csrf_token %}
-          <button type="submit" class="text-amber-300 underline hover:text-amber-200 transition-colors">Resend</button>
-        </form>
-        <button type="button" @click="show = false" class="text-amber-300/60 hover:text-amber-300 px-1">✕</button>
-      </div>
-    </div>
-  {% endif %}
 
   {% if messages %}
     <div class="relative z-20 max-w-6xl mx-auto px-4 pt-4">

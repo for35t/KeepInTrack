@@ -407,7 +407,7 @@ def explore(request):
         "next_url": _page_url(request, page + 1) if has_next else None,
         "image_base": tmdb.IMAGE_BASE,
     }
-    if request.headers.get("HX-Request"):
+    if request.headers.get("HX-Request") and not request.headers.get("HX-History-Restore-Request"):
         return render(request, "partials/explore_results.html", context)
     return render(request, "explore.html", context)
 
